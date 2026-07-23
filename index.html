@@ -65,12 +65,23 @@
 
   /* --- cenas da cartolina --- */
   #sceneList { display: none; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
-  .sceneitem { position: relative; border: 1px solid var(--border); border-radius: 8px; padding: 6px; background: #fff; }
-  .sceneitem canvas { display: block; border-radius: 4px; }
-  .scenenum {
-    position: absolute; top: -9px; left: -9px; background: var(--accent); color: #fff;
-    border-radius: 999px; font-size: 0.75rem; font-weight: 700; padding: 2px 8px;
+  .sceneitem {
+    position: relative; border: 1px solid var(--border); border-radius: 8px; padding: 6px; background: #fff;
+    cursor: grab; transition: box-shadow .1s, opacity .1s; touch-action: none;
   }
+  .sceneitem:active { cursor: grabbing; }
+  .sceneitem.dragging { opacity: 0.4; }
+  .sceneitem.drop-before { box-shadow: -3px 0 0 var(--accent); }
+  .sceneitem.drop-after { box-shadow: 3px 0 0 var(--accent); }
+  .sceneitem canvas { display: block; border-radius: 4px; pointer-events: none; }
+  .scenenum {
+    position: absolute; top: -10px; left: -10px; background: var(--accent); color: #fff;
+    border: none; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
+    width: 34px; padding: 3px 0; text-align: center; cursor: text;
+    -moz-appearance: textfield;
+  }
+  .scenenum::-webkit-outer-spin-button, .scenenum::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .scenenum:focus { outline: 2px solid var(--accent-dark); }
   .scenebtns { display: flex; gap: 4px; justify-content: center; margin-top: 5px; }
   .scenebtns button {
     border: 1px solid var(--border); background: #fff; border-radius: 6px;
@@ -178,7 +189,7 @@
       <button class="samplebtn" id="sampleBtn">✨ Testar com um desenho de exemplo</button>
     </div>
     <input type="file" id="fileInput" accept="image/*" multiple>
-    <div class="hint" id="sceneHint" style="display:none">Ordem de desenho na cartolina — ◀ ▶ reordena, ✕ remove, e o campo ⏱ define quantos segundos cada cena leva pra ser desenhada (o slider "duração" aplica pra todas de uma vez):</div>
+    <div class="hint" id="sceneHint" style="display:none">Ordem de desenho na cartolina — <strong>arraste</strong> as miniaturas pra reordenar ou <strong>digite o número</strong> no selo azul; ✕ remove; o campo ⏱ define os segundos de cada cena (o slider "duração" aplica pra todas):</div>
     <div id="sceneList"></div>
   </div>
 
@@ -336,6 +347,14 @@ function scenesChanged() {
   el('stageCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+let dragFrom = null, dragStartX = 0, dragStartY = 0, dragMoved = false;
+function moveScene(from, to) {
+  if (from === to || from == null) return;
+  const [x] = sceneImages.splice(from, 1);
+  sceneImages.splice(Math.max(0, Math.min(sceneImages.length, to)), 0, x);
+  scenesChanged();
+}
+
 function renderSceneList() {
   const box = el('sceneList');
   box.innerHTML = '';
@@ -352,24 +371,74 @@ function renderSceneList() {
     g.fillStyle = '#fff'; g.fillRect(0, 0, 96, 68);
     const sc = Math.min(96 / img.width, 68 / img.height);
     g.drawImage(img, (96 - img.width * sc) / 2, (68 - img.height * sc) / 2, img.width * sc, img.height * sc);
-    const num = document.createElement('div');
+    // selo com o número da ordem — dá pra DIGITAR a posição desejada
+    const num = document.createElement('input');
     num.className = 'scenenum';
-    num.textContent = (i + 1) + 'º';
+    num.type = 'number'; num.min = '1'; num.max = String(sceneImages.length);
+    num.value = i + 1;
+    num.title = 'digite em que posição esta cena deve ser desenhada';
+    num.addEventListener('click', e => e.stopPropagation());
+    num.addEventListener('change', () => {
+      let target = Math.round(+num.value) - 1;
+      target = Math.max(0, Math.min(sceneImages.length - 1, isNaN(target) ? i : target));
+      moveScene(i, target);
+    });
+    num.addEventListener('keydown', e => { if (e.key === 'Enter') num.blur(); });
     const btns = document.createElement('div');
     btns.className = 'scenebtns';
-    const mk = (label, title, fn) => {
-      const bt = document.createElement('button');
-      bt.textContent = label; bt.title = title;
-      bt.addEventListener('click', fn);
-      return bt;
+    const rm = document.createElement('button');
+    rm.textContent = '✕ remover'; rm.title = 'remover esta cena';
+    rm.addEventListener('click', () => { sceneImages.splice(i, 1); scenesChanged(); });
+    btns.appendChild(rm);
+
+    // arrastar pra reordenar (pointer events: funciona no mouse e no toque)
+    item.dataset.idx = i;
+    item.addEventListener('pointerdown', e => {
+      if (e.target.closest('.scenenum, button')) return; // deixa o campo/botão funcionar
+      e.preventDefault();
+      dragFrom = i;
+      dragStartX = e.clientX; dragStartY = e.clientY;
+      dragMoved = false;
+      try { item.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    item.addEventListener('pointermove', e => {
+      if (dragFrom === null) return;
+      if (!dragMoved && Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) < 6) return;
+      dragMoved = true;
+      const box = el('sceneList');
+      box.querySelectorAll('.sceneitem').forEach(it => it.classList.remove('drop-before', 'drop-after'));
+      box.querySelectorAll('.sceneitem')[dragFrom].classList.add('dragging');
+      const over = (document.elementFromPoint(e.clientX, e.clientY) || {}).closest
+        ? document.elementFromPoint(e.clientX, e.clientY).closest('.sceneitem') : null;
+      if (over) {
+        const r = over.getBoundingClientRect();
+        over.classList.toggle('drop-after', e.clientX > r.left + r.width / 2);
+        over.classList.toggle('drop-before', e.clientX <= r.left + r.width / 2);
+      }
+    });
+    const finishDrag = e => {
+      if (dragFrom === null) return;
+      const from = dragFrom;
+      dragFrom = null;
+      const box = el('sceneList');
+      if (dragMoved) {
+        const over = (document.elementFromPoint(e.clientX, e.clientY) || {}).closest
+          ? document.elementFromPoint(e.clientX, e.clientY).closest('.sceneitem') : null;
+        if (over && over.dataset.idx !== undefined) {
+          const j = +over.dataset.idx;
+          const r = over.getBoundingClientRect();
+          const after = e.clientX > r.left + r.width / 2;
+          let insertPos = j + (after ? 1 : 0);
+          if (from < insertPos) insertPos--;
+          box.querySelectorAll('.sceneitem').forEach(it => it.classList.remove('dragging', 'drop-before', 'drop-after'));
+          moveScene(from, insertPos);
+          return;
+        }
+      }
+      box.querySelectorAll('.sceneitem').forEach(it => it.classList.remove('dragging', 'drop-before', 'drop-after'));
     };
-    btns.appendChild(mk('◀', 'desenhar antes', () => {
-      if (i > 0) { [sceneImages[i - 1], sceneImages[i]] = [sceneImages[i], sceneImages[i - 1]]; scenesChanged(); }
-    }));
-    btns.appendChild(mk('✕', 'remover', () => { sceneImages.splice(i, 1); scenesChanged(); }));
-    btns.appendChild(mk('▶', 'desenhar depois', () => {
-      if (i < sceneImages.length - 1) { [sceneImages[i + 1], sceneImages[i]] = [sceneImages[i], sceneImages[i + 1]]; scenesChanged(); }
-    }));
+    item.addEventListener('pointerup', finishDrag);
+    item.addEventListener('pointercancel', finishDrag);
     const durRow = document.createElement('div');
     durRow.className = 'scenedur';
     const durInp = document.createElement('input');
