@@ -63,6 +63,21 @@
   }
   .samplebtn:hover { border-color: var(--accent); color: var(--accent); }
 
+  /* --- cenas da cartolina --- */
+  #sceneList { display: none; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+  .sceneitem { position: relative; border: 1px solid var(--border); border-radius: 8px; padding: 6px; background: #fff; }
+  .sceneitem canvas { display: block; border-radius: 4px; }
+  .scenenum {
+    position: absolute; top: -9px; left: -9px; background: var(--accent); color: #fff;
+    border-radius: 999px; font-size: 0.75rem; font-weight: 700; padding: 2px 8px;
+  }
+  .scenebtns { display: flex; gap: 4px; justify-content: center; margin-top: 5px; }
+  .scenebtns button {
+    border: 1px solid var(--border); background: #fff; border-radius: 6px;
+    cursor: pointer; font-size: 0.8rem; padding: 2px 7px;
+  }
+  .scenebtns button:hover { border-color: var(--accent); color: var(--accent); }
+
   /* --- controls --- */
   .controls {
     display: flex;
@@ -153,11 +168,13 @@
 
   <div class="card">
     <div id="dropzone">
-      <div>Arraste uma imagem aqui ou <strong>clique para escolher</strong></div>
-      <div class="hint">Funciona melhor com desenhos de traço sobre fundo branco (PNG ou JPG)</div>
+      <div>Arraste <strong>uma ou várias imagens</strong> aqui ou <strong>clique para escolher</strong></div>
+      <div class="hint">Funciona melhor com desenhos de traço sobre fundo branco (PNG ou JPG).<br>Com 2+ imagens vira o <strong>modo cartolina</strong>: a câmera desenha uma cena de cada vez e dá zoom out no final.</div>
       <button class="samplebtn" id="sampleBtn">✨ Testar com um desenho de exemplo</button>
     </div>
-    <input type="file" id="fileInput" accept="image/*">
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <div class="hint" id="sceneHint" style="display:none">Ordem de desenho na cartolina — use ◀ ▶ pra reordenar e ✕ pra remover; arraste mais imagens pra adicionar:</div>
+    <div id="sceneList"></div>
   </div>
 
   <div class="card">
@@ -260,13 +277,14 @@ const el = id => document.getElementById(id);
 const canvas = el('canvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-let sourceImage = null;   // Image original enviada
-let srcData = null;       // ImageData da imagem encaixada no canvas
-let revealOrder = null;   // Int32Array: índices de pixels na ordem de desenho
+let sceneImages = [];     // imagens enviadas, na ordem de desenho
+let scenes = null;        // dados processados de cada cena (traços, ordem…)
+let grid = null;          // layout da cartolina (grade e zoom de encaixe)
+let totalInk = 0;
 let animHandle = null;    // requestAnimationFrame em andamento
 let recorder = null;
 
-// ---------- upload ----------
+// ---------- upload (aceita várias imagens) ----------
 const dropzone = el('dropzone');
 const fileInput = el('fileInput');
 
@@ -274,26 +292,84 @@ dropzone.addEventListener('click', e => {
   if (e.target.id !== 'sampleBtn') fileInput.click();
 });
 fileInput.addEventListener('change', () => {
-  if (fileInput.files[0]) loadFile(fileInput.files[0]);
+  if (fileInput.files.length) loadFiles(fileInput.files);
+  fileInput.value = '';
 });
 ['dragover', 'dragenter'].forEach(ev =>
   dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
 ['dragleave', 'drop'].forEach(ev =>
   dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
-dropzone.addEventListener('drop', e => {
-  const f = e.dataTransfer.files[0];
-  if (f && f.type.startsWith('image/')) loadFile(f);
-});
+dropzone.addEventListener('drop', e => loadFiles(e.dataTransfer.files));
 
-function loadFile(file) {
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.onload = () => { URL.revokeObjectURL(url); setSource(img); };
-  img.onerror = () => setStatus('Não consegui abrir essa imagem. Tenta um PNG ou JPG?', true);
-  img.src = url;
+function loadFiles(files) {
+  const list = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (!list.length) return;
+  let pending = list.length;
+  const loaded = [];
+  list.forEach((f, idx) => {
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      loaded[idx] = img;
+      if (--pending === 0) { sceneImages.push(...loaded.filter(Boolean)); scenesChanged(); }
+    };
+    img.onerror = () => {
+      setStatus('Não consegui abrir uma das imagens.', true);
+      if (--pending === 0) { sceneImages.push(...loaded.filter(Boolean)); scenesChanged(); }
+    };
+    img.src = url;
+  });
 }
 
-// desenho de exemplo, gerado na hora
+function scenesChanged() {
+  renderSceneList();
+  if (!sceneImages.length) { el('stageCard').style.display = 'none'; return; }
+  el('stageCard').style.display = 'block';
+  el('resultCard').style.display = 'none';
+  prepare();
+  el('stageCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderSceneList() {
+  const box = el('sceneList');
+  box.innerHTML = '';
+  const show = sceneImages.length > 0;
+  box.style.display = show ? 'flex' : 'none';
+  el('sceneHint').style.display = show ? 'block' : 'none';
+  sceneImages.forEach((img, i) => {
+    const item = document.createElement('div');
+    item.className = 'sceneitem';
+    const th = document.createElement('canvas');
+    th.width = 96; th.height = 68;
+    const g = th.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 96, 68);
+    const sc = Math.min(96 / img.width, 68 / img.height);
+    g.drawImage(img, (96 - img.width * sc) / 2, (68 - img.height * sc) / 2, img.width * sc, img.height * sc);
+    const num = document.createElement('div');
+    num.className = 'scenenum';
+    num.textContent = (i + 1) + 'º';
+    const btns = document.createElement('div');
+    btns.className = 'scenebtns';
+    const mk = (label, title, fn) => {
+      const bt = document.createElement('button');
+      bt.textContent = label; bt.title = title;
+      bt.addEventListener('click', fn);
+      return bt;
+    };
+    btns.appendChild(mk('◀', 'desenhar antes', () => {
+      if (i > 0) { [sceneImages[i - 1], sceneImages[i]] = [sceneImages[i], sceneImages[i - 1]]; scenesChanged(); }
+    }));
+    btns.appendChild(mk('✕', 'remover', () => { sceneImages.splice(i, 1); scenesChanged(); }));
+    btns.appendChild(mk('▶', 'desenhar depois', () => {
+      if (i < sceneImages.length - 1) { [sceneImages[i + 1], sceneImages[i]] = [sceneImages[i], sceneImages[i + 1]]; scenesChanged(); }
+    }));
+    item.appendChild(num); item.appendChild(th); item.appendChild(btns);
+    box.appendChild(item);
+  });
+}
+
+// desenho de exemplo, gerado na hora (substitui a lista)
 el('sampleBtn').addEventListener('click', e => {
   e.stopPropagation();
   const c = document.createElement('canvas');
@@ -334,7 +410,7 @@ el('sampleBtn').addEventListener('click', e => {
   g.beginPath(); g.moveTo(330, 610); g.lineTo(295, 595); g.moveTo(330, 610); g.lineTo(322, 572); g.stroke();
 
   const img = new Image();
-  img.onload = () => setSource(img);
+  img.onload = () => { sceneImages = [img]; scenesChanged(); };
   img.src = c.toDataURL();
 });
 
@@ -345,35 +421,82 @@ el('duration').addEventListener('input', () => {
 el('sensitivity').addEventListener('input', () => {
   const v = +el('sensitivity').value;
   el('sensitivityVal').textContent = v < 55 ? 'só traços bem escuros' : v <= 90 ? 'normal' : 'pega traços claros';
-  if (sourceImage) prepare();
+  if (sceneImages.length) prepare();
 });
-el('format').addEventListener('change', () => { if (sourceImage) prepare(); });
-el('order').addEventListener('change', () => { if (sourceImage) prepare(); });
+el('format').addEventListener('change', () => { if (sceneImages.length) prepare(); });
+el('order').addEventListener('change', () => { if (sceneImages.length) prepare(); });
 
-function setSource(img) {
-  sourceImage = img;
-  el('stageCard').style.display = 'block';
-  el('resultCard').style.display = 'none';
-  prepare();
-  el('stageCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-// ---------- pipeline: imagem -> ordem de desenho ----------
+// ---------- pipeline: imagens -> cartolina com câmera ----------
 function prepare() {
   stopAnimation();
   const [W, H] = el('format').value.split('x').map(Number);
   canvas.width = W; canvas.height = H;
+  if (!sceneImages.length) return;
 
-  // encaixa a imagem centralizada com margem
+  scenes = sceneImages.map(img => prepareScene(img, W, H));
+  const n = scenes.length;
+
+  // grade da cartolina (cada cena ocupa uma "célula"; linhas incompletas
+  // ficam centralizadas pra cartolina final parecer equilibrada)
+  const cols = Math.ceil(Math.sqrt(n));
+  const rows = Math.ceil(n / cols);
+  for (let i = 0; i < n; i++) {
+    const r = (i / cols) | 0;
+    const inRow = Math.min(cols, n - r * cols);
+    scenes[i].cellX = ((i - r * cols) + (cols - inRow) / 2) * W;
+    scenes[i].cellY = r * H;
+  }
+  grid = {
+    worldW: cols * W, worldH: rows * H,
+    fitZoom: Math.min(W / (cols * W), H / (rows * H)),
+    cx: cols * W / 2, cy: rows * H / 2,
+  };
+
+  totalInk = scenes.reduce((sum, sc) => sum + sc.revealOrder.length, 0);
+  if (!totalInk) {
+    setStatus('Não encontrei traços nas imagens. São desenhos escuros sobre fundo claro? Tenta aumentar a sensibilidade.', true);
+    scenes = null;
+    return;
+  }
+  setStatus(n === 1
+    ? 'Traços encontrados! Clica em "Ver prévia" ou já gera o vídeo direto.'
+    : '🎥 Modo cartolina com ' + n + ' cenas! Abaixo está o quadro FINAL (depois do zoom out). Aperta "Ver prévia" pra ver a câmera passear.');
+
+  // mostra a cartolina completa (como o vídeo termina)
+  scenes.forEach(sc => revealPixels(sc, sc.revealOrder.length));
+  drawWorld(cameraFinal());
+}
+
+function cameraOf(i) {
+  return { cx: scenes[i].cellX + canvas.width / 2, cy: scenes[i].cellY + canvas.height / 2, z: 1 };
+}
+function cameraFinal() {
+  return scenes.length === 1 ? cameraOf(0) : { cx: grid.cx, cy: grid.cy, z: grid.fitZoom };
+}
+
+// processa UMA imagem: detecta traços e calcula a ordem de desenho
+function prepareScene(img, W, H) {
+  const off = document.createElement('canvas');
+  off.width = W; off.height = H;
+  const octx = off.getContext('2d', { willReadFrequently: true });
   const margin = Math.round(Math.min(W, H) * 0.05);
-  const scale = Math.min((W - margin * 2) / sourceImage.width, (H - margin * 2) / sourceImage.height);
-  const dw = sourceImage.width * scale, dh = sourceImage.height * scale;
-  const dx = (W - dw) / 2, dy = (H - dh) / 2;
+  const scale = Math.min((W - margin * 2) / img.width, (H - margin * 2) / img.height);
+  const dw = img.width * scale, dh = img.height * scale;
+  octx.fillStyle = '#fff';
+  octx.fillRect(0, 0, W, H);
+  octx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  const srcData = octx.getImageData(0, 0, W, H);
 
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, W, H);
-  ctx.drawImage(sourceImage, dx, dy, dw, dh);
-  srcData = ctx.getImageData(0, 0, W, H);
+  const scene = {
+    srcData,
+    revealOrder: new Int32Array(0),
+    revealCanvas: document.createElement('canvas'),
+    revealData: new ImageData(W, H),
+    revealed: 0,
+    cellX: 0, cellY: 0,
+  };
+  scene.revealCanvas.width = W;
+  scene.revealCanvas.height = H;
 
   // 1) máscara de "tinta": pixels que não são quase-brancos
   const d = srcData.data;
@@ -383,24 +506,13 @@ function prepare() {
   for (let i = 0; i < W * H; i++) {
     const p = i * 4;
     const a = d[p + 3];
-    if (a < 100) continue; // transparente = fundo
+    if (a < 100) continue;
     const distWhite = 255 - Math.min(d[p], d[p + 1], d[p + 2]);
     if (distWhite > threshold) { mask[i] = 1; inkCount++; }
   }
+  if (inkCount === 0) return scene;
 
-  if (inkCount === 0) {
-    setStatus('Não encontrei traços nessa imagem. Ela tem desenho escuro sobre fundo claro? Tenta aumentar a sensibilidade.', true);
-    revealOrder = null;
-    return;
-  }
-  if (inkCount > W * H * 0.4) {
-    setStatus('⚠️ Essa imagem tem muita área escura (parece foto, não desenho de quadro branco). O efeito pode ficar estranho — mas vamos lá!');
-  } else {
-    setStatus('Traços encontrados! Clica em "Ver prévia" ou já gera o vídeo direto.');
-  }
-
-  // 2) separa em componentes conectados (cada "traço" isolado),
-  //    guardando a caixa (bounding box) de cada um
+  // 2) separa em componentes conectados (cada "traço" isolado)
   const labels = new Int32Array(W * H).fill(-1);
   const comps = [];
   const stack = new Int32Array(inkCount);
@@ -424,16 +536,15 @@ function prepare() {
         for (let dx2 = -1; dx2 <= 1; dx2++) {
           const nx = x + dx2;
           if (nx < 0 || nx >= W) continue;
-          const n = ny * W + nx;
-          if (mask[n] && labels[n] < 0) { labels[n] = compId; stack[top++] = n; }
+          const nn = ny * W + nx;
+          if (mask[nn] && labels[nn] < 0) { labels[nn] = compId; stack[top++] = nn; }
         }
       }
     }
     comps.push({ pix, x0, y0, x1, y1 });
   }
 
-  // 3) detecta texto: traços pequenos, alinhados numa mesma "linha de base"
-  //    e próximos na horizontal (3 ou mais juntos = uma linha de texto)
+  // 3) detecta texto: traços pequenos alinhados numa mesma linha de base
   const isText = new Array(comps.length).fill(false);
   {
     const cand = [];
@@ -441,13 +552,13 @@ function prepare() {
       const c = comps[i], h = c.y1 - c.y0 + 1, w = c.x1 - c.x0 + 1;
       if (h <= H * 0.15 && w <= H * 0.30) cand.push(i);
     }
-    cand.sort((a, b) => comps[a].x0 - comps[b].x0);
+    cand.sort((a2, b2) => comps[a2].x0 - comps[b2].x0);
     const used = new Array(comps.length).fill(false);
     for (let i = 0; i < cand.length; i++) {
       if (used[cand[i]]) continue;
       const line = [cand[i]];
       used[cand[i]] = true;
-      let c0 = comps[cand[i]];
+      const c0 = comps[cand[i]];
       let bottom = c0.y1, lh = c0.y1 - c0.y0 + 1, right = c0.x1;
       for (let j = i + 1; j < cand.length; j++) {
         if (used[cand[j]]) continue;
@@ -473,7 +584,7 @@ function prepare() {
       case 'baixo': return (((H - 1 - c.y1) / band) | 0) * W + c.x0;
       case 'esq':   return ((c.x0 / bandX) | 0) * H + c.y0;
       case 'dir':   return (((W - 1 - c.x1) / bandX) | 0) * H + c.y0;
-      default:      return ((c.y0 / band) | 0) * W + c.x0; // cima pra baixo
+      default:      return ((c.y0 / band) | 0) * W + c.x0;
     }
   }
   const compOrder = comps.map((c, i) => ({ c, i }));
@@ -485,18 +596,13 @@ function prepare() {
     return spatialKey(A.c) - spatialKey(B.c);
   });
 
-  // 4) dentro de cada traço, uma "caneta virtual" percorre o desenho como
-  //    uma pessoa: a ponta é um disco do tamanho do traço, e ela sempre
-  //    segue pro trecho não desenhado mais próximo PELO CAMINHO do traço.
-  //    Assim uma linha é terminada antes de começar a próxima (nada de
-  //    dois lados do telhado subindo juntos como impressora).
-  revealOrder = new Int32Array(inkCount);
+  // 5) caneta virtual percorre cada traço pelo caminho natural
+  const revealOrder = new Int32Array(inkCount);
   const seen = new Uint8Array(W * H);
   const queue = new Int32Array(inkCount);
   const revealed = new Uint8Array(W * H);
   let out = 0;
 
-  // BFS que devolve o pixel mais distante (pra achar a ponta de um traço)
   function farthestFrom(start, compId) {
     let head = 0, tail = 0;
     queue[tail++] = start;
@@ -513,8 +619,8 @@ function prepare() {
         for (let dx2 = -1; dx2 <= 1; dx2++) {
           const nx = x + dx2;
           if (nx < 0 || nx >= W) continue;
-          const n = ny * W + nx;
-          if (labels[n] === compId && !seen[n]) { seen[n] = 1; visited.push(n); queue[tail++] = n; }
+          const nn = ny * W + nx;
+          if (labels[nn] === compId && !seen[nn]) { seen[nn] = 1; visited.push(nn); queue[tail++] = nn; }
         }
       }
     }
@@ -522,7 +628,6 @@ function prepare() {
     return last;
   }
 
-  // anda pelo traço (por dentro dele) até o pixel não revelado mais próximo
   function nearestUnrevealed(start, compId) {
     let head = 0, tail = 0;
     queue[tail++] = start;
@@ -538,10 +643,10 @@ function prepare() {
         for (let dx2 = -1; dx2 <= 1; dx2++) {
           const nx = x + dx2;
           if (nx < 0 || nx >= W) continue;
-          const n = ny * W + nx;
-          if (labels[n] === compId && !seen[n]) {
-            if (!revealed[n]) { found = n; break; }
-            seen[n] = 1; visited.push(n); queue[tail++] = n;
+          const nn = ny * W + nx;
+          if (labels[nn] === compId && !seen[nn]) {
+            if (!revealed[nn]) { found = nn; break; }
+            seen[nn] = 1; visited.push(nn); queue[tail++] = nn;
           }
         }
       }
@@ -550,51 +655,61 @@ function prepare() {
     return found;
   }
 
-  // a ponta da caneta: um disco com o raio aproximado da espessura do traço
   const R = Math.max(4, Math.round(Math.min(W, H) / 140));
   const disc = [];
   for (let dy2 = -R; dy2 <= R; dy2++)
     for (let dx2 = -R; dx2 <= R; dx2++)
       if (dx2 * dx2 + dy2 * dy2 <= R * R) disc.push([dx2, dy2]);
-  disc.sort((a, b) => (a[0] * a[0] + a[1] * a[1]) - (b[0] * b[0] + b[1] * b[1]));
+  disc.sort((a2, b2) => (a2[0] * a2[0] + a2[1] * a2[1]) - (b2[0] * b2[0] + b2[1] * b2[1]));
 
   for (let c = 0; c < compOrder.length; c++) {
     const pix = compOrder[c].c.pix;
     const compId = labels[pix[0]];
-    // ponta dupla: BFS duas vezes acha uma extremidade natural do traço
     let pen = farthestFrom(farthestFrom(pix[0], compId), compId);
     while (pen >= 0) {
       const px = pen % W, py = (pen / W) | 0;
       for (const [ox, oy] of disc) {
         const nx = px + ox, ny = py + oy;
         if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
-        const n = ny * W + nx;
-        if (labels[n] === compId && !revealed[n]) { revealed[n] = 1; revealOrder[out++] = n; }
+        const nn = ny * W + nx;
+        if (labels[nn] === compId && !revealed[nn]) { revealed[nn] = 1; revealOrder[out++] = nn; }
       }
       pen = nearestUnrevealed(pen, compId);
     }
   }
-  // segurança: se algum pixel de tinta escapou, entra no final
   if (out < inkCount) {
     for (let i = 0; i < W * H; i++)
       if (mask[i] && !revealed[i]) { revealed[i] = 1; revealOrder[out++] = i; }
   }
-
-  // mostra o resultado final parado (pra pessoa conferir o enquadramento)
-  ctx.putImageData(buildFinalFrame(), 0, 0);
+  scene.revealOrder = revealOrder;
+  return scene;
 }
 
-// frame final: fundo branco + só os pixels de tinta (limpa sombras do fundo)
-function buildFinalFrame() {
-  const W = canvas.width, H = canvas.height;
-  const frame = ctx.createImageData(W, H);
-  const f = frame.data, s = srcData.data;
-  f.fill(255);
-  for (let k = 0; k < revealOrder.length; k++) {
-    const p = revealOrder[k] * 4;
-    f[p] = s[p]; f[p + 1] = s[p + 1]; f[p + 2] = s[p + 2]; f[p + 3] = 255;
+// revela os primeiros `upto` pixels de uma cena (e atualiza o canvas dela)
+function revealPixels(sc, upto) {
+  const f = sc.revealData.data, srcd = sc.srcData.data;
+  if (upto <= sc.revealed) return;
+  for (; sc.revealed < upto; sc.revealed++) {
+    const p = sc.revealOrder[sc.revealed] * 4;
+    f[p] = srcd[p]; f[p + 1] = srcd[p + 1]; f[p + 2] = srcd[p + 2]; f[p + 3] = 255;
   }
-  return frame;
+  sc.revealCanvas.getContext('2d').putImageData(sc.revealData, 0, 0);
+}
+function resetScene(sc) {
+  sc.revealed = 0;
+  sc.revealData.data.fill(0);
+  sc.revealCanvas.getContext('2d').putImageData(sc.revealData, 0, 0);
+}
+
+// desenha a cartolina vista pela câmera {cx, cy, z}
+function drawWorld(cam) {
+  const W = canvas.width, H = canvas.height;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(cam.z, 0, 0, cam.z, W / 2 - cam.cx * cam.z, H / 2 - cam.cy * cam.z);
+  for (const sc of scenes) ctx.drawImage(sc.revealCanvas, sc.cellX, sc.cellY);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 // ---------- animação ----------
@@ -1098,58 +1213,107 @@ el('handReset').addEventListener('click', () => {
 
 function runAnimation(onDone) {
   const W = canvas.width, H = canvas.height;
-  const total = revealOrder.length;
-  const durMs = +el('duration').value * 1000;
-  const holdMs = 1500;
+  const n = scenes.length;
+  scenes.forEach(resetScene);
+
+  const drawMs = +el('duration').value * 1000;
+  const moveMs = 950;    // passeio da câmera entre cenas
+  const zoomMs = 2200;   // zoom out final
+  const holdMs = 1800;   // segura o quadro completo
+
+  // linha do tempo: desenha cena 1 -> passeia -> desenha cena 2 -> … -> zoom out
+  const phases = [];
+  scenes.forEach((sc, i) => {
+    phases.push({ type: 'draw', i, ms: Math.max(300, drawMs * sc.revealOrder.length / totalInk) });
+    if (i < n - 1) phases.push({ type: 'move', i, ms: moveMs });
+  });
+  if (n > 1) phases.push({ type: 'zoom', ms: zoomMs });
+  phases.push({ type: 'hold', ms: holdMs });
+  const totalMs = phases.reduce((sum, p) => sum + p.ms, 0);
+
+  const fitCam = cameraFinal();
+  const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   const useHand = el('showHand').checked;
 
-  const frame = ctx.createImageData(W, H);
-  frame.data.fill(255);
-  const f = frame.data, s = srcData.data;
-
-  let revealed = 0;
   let handX = W + 300, handY = H + 300; // a mão entra vindo de fora da tela
   let tilt = 0, lift = 1, dirX = 0, prevTx = 0;
   let started = null;
 
   function tick(now) {
     if (started === null) started = now;
-    const elapsed = now - started;
-    const target = Math.min(total, Math.floor(total * (elapsed / durMs)));
+    const t = now - started;
+    const done = t >= totalMs;
 
-    for (; revealed < target; revealed++) {
-      const p = revealOrder[revealed] * 4;
-      f[p] = s[p]; f[p + 1] = s[p + 1]; f[p + 2] = s[p + 2]; f[p + 3] = 255;
+    let cam = cameraOf(0), handTarget = null, drawing = false;
+    let acc = 0;
+    for (const ph of phases) {
+      if (t > acc + ph.ms) {
+        // fase que já passou: garante o efeito final dela (útil se o
+        // navegador pulou quadros)
+        if (ph.type === 'draw') revealPixels(scenes[ph.i], scenes[ph.i].revealOrder.length);
+        acc += ph.ms;
+        continue;
+      }
+      const pr = Math.max(0, (t - acc) / ph.ms);
+      if (ph.type === 'draw') {
+        const sc = scenes[ph.i];
+        revealPixels(sc, Math.min(sc.revealOrder.length, Math.floor(sc.revealOrder.length * pr)));
+        cam = cameraOf(ph.i);
+        if (sc.revealed > 0) {
+          const last = sc.revealOrder[sc.revealed - 1];
+          handTarget = { x: sc.cellX + last % W, y: sc.cellY + ((last / W) | 0) };
+          drawing = true;
+        }
+      } else if (ph.type === 'move') {
+        const e2 = ease(pr);
+        const a2 = cameraOf(ph.i), b2 = cameraOf(ph.i + 1);
+        cam = { cx: a2.cx + (b2.cx - a2.cx) * e2, cy: a2.cy + (b2.cy - a2.cy) * e2, z: 1 };
+        const nx = scenes[ph.i + 1];
+        if (nx.revealOrder.length) {
+          const first = nx.revealOrder[0];
+          handTarget = { x: nx.cellX + first % W, y: nx.cellY + ((first / W) | 0) };
+        }
+      } else if (ph.type === 'zoom') {
+        const e2 = ease(pr);
+        const a2 = cameraOf(n - 1);
+        cam = {
+          cx: a2.cx + (fitCam.cx - a2.cx) * e2,
+          cy: a2.cy + (fitCam.cy - a2.cy) * e2,
+          z: a2.z + (fitCam.z - a2.z) * e2,
+        };
+      } else { // hold
+        cam = fitCam;
+      }
+      break;
     }
-    ctx.putImageData(frame, 0, 0);
+    if (done) {
+      scenes.forEach(sc => revealPixels(sc, sc.revealOrder.length));
+      cam = fitCam;
+    }
 
-    const done = revealed >= total;
-    if (!done && useHand && revealed > 0) {
-      const last = revealOrder[revealed - 1];
-      const tx = last % W, ty = (last / W) | 0;
-      // distância até o alvo: se for longe, é um "pulo" entre traços —
-      // a mão dá uma leve levantada (cresce um tiquinho, como se
-      // aproximasse da câmera) e inclina, como uma mão de verdade
-      const jump = Math.hypot(tx - handX, ty - handY);
-      handX += (tx - handX) * 0.35;
-      handY += (ty - handY) * 0.35;
-      // inclinação: acompanha a direção horizontal do traço, suavizada
-      dirX += ((tx - prevTx) - dirX) * 0.2;
-      prevTx = tx;
+    drawWorld(cam);
+
+    if (!done && useHand && handTarget) {
+      // a mão vive no espaço da TELA: projeta o alvo pela câmera, assim
+      // ela mantém o tamanho enquanto o mundo dá zoom (como filmagem real)
+      const sx = (handTarget.x - cam.cx) * cam.z + W / 2;
+      const sy = (handTarget.y - cam.cy) * cam.z + H / 2;
+      const jump = Math.hypot(sx - handX, sy - handY);
+      handX += (sx - handX) * 0.35;
+      handY += (sy - handY) * 0.35;
+      dirX += ((sx - prevTx) - dirX) * 0.2;
+      prevTx = sx;
       const tiltTarget = Math.max(-0.13, Math.min(0.13, dirX * 0.015)) + (jump > 80 ? 0.07 : 0);
       tilt += (tiltTarget - tilt) * 0.12;
-      lift += ((jump > 80 ? 1.06 : 1) - lift) * 0.15;
-      // balanço intrínseco: oscilação leve de pulso + tremido de escrita
-      const wobble = 0.045 * Math.sin(elapsed * 0.017) + 0.025 * Math.sin(elapsed * 0.043);
-      const jx = 1.6 * Math.sin(elapsed * 0.031);
-      const jy = 1.4 * Math.cos(elapsed * 0.027);
+      lift += (((jump > 80 || !drawing) ? 1.06 : 1) - lift) * 0.15;
+      const wobble = 0.045 * Math.sin(t * 0.017) + 0.025 * Math.sin(t * 0.043);
+      const jx = 1.6 * Math.sin(t * 0.031);
+      const jy = 1.4 * Math.cos(t * 0.027);
       drawHand(handX + jx, handY + jy, tilt + wobble, lift);
     }
 
-    const pct = Math.min(100, 100 * elapsed / (durMs + holdMs));
-    el('progressfill').style.width = pct + '%';
-
-    if (elapsed < durMs + holdMs) {
+    el('progressfill').style.width = Math.min(100, 100 * t / totalMs) + '%';
+    if (!done) {
       animHandle = requestAnimationFrame(tick);
     } else {
       animHandle = null;
@@ -1161,7 +1325,7 @@ function runAnimation(onDone) {
 
 // ---------- prévia ----------
 el('previewBtn').addEventListener('click', () => {
-  if (!revealOrder) return;
+  if (!scenes || !totalInk) return;
   stopAnimation();
   setButtons(false);
   el('progressbar').style.display = 'block';
@@ -1175,7 +1339,7 @@ el('previewBtn').addEventListener('click', () => {
 
 // ---------- gravação ----------
 el('renderBtn').addEventListener('click', () => {
-  if (!revealOrder) return;
+  if (!scenes || !totalInk) return;
   stopAnimation();
 
   const candidates = [
