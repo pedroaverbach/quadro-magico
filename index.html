@@ -263,6 +263,13 @@
       <button class="samplebtn" id="handBgDone" style="display:none">✅ Fundo pronto → marcar a ponta</button>
       <button class="samplebtn" id="handRestart" style="display:none">🔄 Recomeçar recorte</button>
       <button class="samplebtn" id="handReset">Voltar pra mão padrão</button>
+      <div class="hint" style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px">
+        <strong>Guardar pra sempre:</strong> o navegador às vezes apaga a mão salva. Baixe um arquivo dela e recarregue quando quiser — funciona em qualquer aparelho.
+      </div>
+      <button class="samplebtn" id="handDownload" style="display:none">💾 Baixar arquivo da minha mão</button>
+      <label class="samplebtn" style="cursor:pointer">📂 Carregar mão de um arquivo
+        <input type="file" id="handLoadFile" accept=".json,application/json" style="display:none">
+      </label>
     </details>
   </div>
 
@@ -977,6 +984,8 @@ function updateHandButtons() {
   el('brushSizeWrap').style.display = el('handTool').value === 'borracha' ? 'inline' : 'none';
   el('handUndo').style.display = (handStep === 'fundo' && handUndoStack.length > 0) ? 'inline-block' : 'none';
   el('handRestart').style.display = (handStep && handOriginal) ? 'inline-block' : 'none';
+  const temMao = !!(customHand && customHand.tipX !== null && customHand.tipX !== undefined);
+  el('handDownload').style.display = temMao ? 'inline-block' : 'none';
 }
 
 // apaga o fundo a partir de um clique — SÓ a área conectada ao ponto
@@ -1127,10 +1136,9 @@ handPreview.addEventListener('click', e => {
     customHand.tipX = ix;
     customHand.tipY = iy;
     renderHandPreview(ix, iy);
-    const salvou = saveCustomHand();
-    el('handTipStatus').textContent = salvou
-      ? 'Ponta marcada e mão salva! ✅ Ela fica guardada neste navegador — mesmo fechando a página, seus próximos vídeos já saem com ela.'
-      : 'Ponta marcada! Sua mão vai aparecer nos próximos vídeos. ✅ (não consegui salvar pra sempre — o navegador bloqueou o armazenamento)';
+    saveCustomHand();
+    updateHandButtons();
+    el('handTipStatus').textContent = 'Ponta marcada! ✅ Pra não perder a mão, baixe o arquivo dela no botão "💾 Baixar arquivo da minha mão" ali embaixo.';
   }
 });
 
@@ -1252,23 +1260,45 @@ el('handRestart').addEventListener('click', () => {
 });
 
 // ---------- salvar a mão pra sempre (neste navegador) ----------
-function saveCustomHand() {
-  if (!customHand || customHand.tipX === null) return false;
-  try {
-    // guarda uma versão reduzida (até 1000px) pra caber no armazenamento
-    const sc = Math.min(1, 1000 / Math.max(customHand.w, customHand.h));
-    const c = document.createElement('canvas');
-    c.width = Math.round(customHand.w * sc);
-    c.height = Math.round(customHand.h * sc);
-    c.getContext('2d').drawImage(customHand.img, 0, 0, c.width, c.height);
-    const payload = {
-      dataUrl: c.toDataURL('image/png'),
-      tipX: customHand.tipX * sc, tipY: customHand.tipY * sc,
-      w: c.width, h: c.height,
-      arm: customHand.arm
-        ? { x: customHand.arm.x * sc, y: customHand.arm.y * sc, w: customHand.arm.w * sc, color: customHand.arm.color }
-        : null,
+// monta o "pacote" da mão (imagem + ponta + braço), reduzido até maxPx
+function serializeHand(maxPx) {
+  if (!customHand || customHand.tipX === null || customHand.tipX === undefined) return null;
+  const sc = Math.min(1, maxPx / Math.max(customHand.w, customHand.h));
+  const c = document.createElement('canvas');
+  c.width = Math.round(customHand.w * sc);
+  c.height = Math.round(customHand.h * sc);
+  c.getContext('2d').drawImage(customHand.img, 0, 0, c.width, c.height);
+  return {
+    app: 'quadro-magico-hand', v: 1,
+    dataUrl: c.toDataURL('image/png'),
+    tipX: customHand.tipX * sc, tipY: customHand.tipY * sc,
+    w: c.width, h: c.height,
+    arm: customHand.arm
+      ? { x: customHand.arm.x * sc, y: customHand.arm.y * sc, w: customHand.arm.w * sc, color: customHand.arm.color }
+      : null,
+  };
+}
+// restaura a mão a partir de um pacote (do navegador ou de um arquivo)
+function applyHandPayload(p, msg) {
+  return new Promise(res => {
+    if (!p || !p.dataUrl) return res(false);
+    const img = new Image();
+    img.onload = () => {
+      customHand = { img, tipX: p.tipX, tipY: p.tipY, w: p.w, h: p.h, arm: p.arm || null };
+      handWork = null; handStep = null; handUndoStack = [];
+      handPreview.style.display = 'none';
+      updateHandButtons();
+      if (msg) el('handTipStatus').textContent = msg;
+      res(true);
     };
+    img.onerror = () => res(false);
+    img.src = p.dataUrl;
+  });
+}
+function saveCustomHand() {
+  try {
+    const payload = serializeHand(900); // menor, pra caber no cofrinho do navegador
+    if (!payload) return false;
     localStorage.setItem('quadroMagicoHand', JSON.stringify(payload));
     return true;
   } catch (e) { return false; }
@@ -1277,16 +1307,42 @@ function loadSavedHand() {
   try {
     const raw = localStorage.getItem('quadroMagicoHand');
     if (!raw) return;
-    const p = JSON.parse(raw);
-    const img = new Image();
-    img.onload = () => {
-      customHand = { img, tipX: p.tipX, tipY: p.tipY, w: p.w, h: p.h, arm: p.arm || null };
-      el('handTipStatus').textContent = 'Sua mão salva já está carregada! ✅ Pra trocar, envie outra foto; pra usar a ilustrada, "Voltar pra mão padrão".';
-    };
-    img.src = p.dataUrl;
+    applyHandPayload(JSON.parse(raw),
+      'Sua mão salva já está carregada! ✅ (Dica: baixe o arquivo dela ali embaixo pra não perder se o navegador limpar.)');
   } catch (e) {}
 }
 loadSavedHand();
+
+// baixar a mão como arquivo (à prova de limpeza do navegador)
+el('handDownload').addEventListener('click', () => {
+  const payload = serializeHand(1600); // qualidade cheia no arquivo
+  if (!payload) { el('handTipStatus').textContent = 'Primeiro recorte uma foto e marque a ponta da caneta.'; return; }
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'minha-mao.maomagica.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  el('handTipStatus').textContent = 'Arquivo baixado! 💾 Guarde-o. Da próxima vez, use "Carregar mão de um arquivo" e ela volta na hora.';
+});
+
+// carregar a mão de um arquivo salvo
+el('handLoadFile').addEventListener('change', () => {
+  const f = el('handLoadFile').files[0];
+  el('handLoadFile').value = '';
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let p = null;
+    try { p = JSON.parse(reader.result); } catch (e) {}
+    if (!p || !p.dataUrl) { el('handTipStatus').textContent = 'Esse arquivo não parece ser uma mão salva pelo app. 🤔'; return; }
+    applyHandPayload(p, 'Mão carregada do arquivo! ✅ Já vale pros próximos vídeos.').then(ok => {
+      if (ok) saveCustomHand();
+      else el('handTipStatus').textContent = 'Não consegui abrir a imagem desse arquivo.';
+    });
+  };
+  reader.readAsText(f);
+});
 
 el('handReset').addEventListener('click', () => {
   customHand = null;
