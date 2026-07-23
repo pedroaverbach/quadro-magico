@@ -394,7 +394,7 @@ function renderSceneList() {
     // arrastar pra reordenar (pointer events: funciona no mouse e no toque)
     item.dataset.idx = i;
     item.addEventListener('pointerdown', e => {
-      if (e.target.closest('.scenenum, button')) return; // deixa o campo/botão funcionar
+      if (e.target.closest('.scenenum, .scenedur, button')) return; // deixa os campos/botões funcionar
       e.preventDefault();
       dragFrom = i;
       dragStartX = e.clientX; dragStartY = e.clientY;
