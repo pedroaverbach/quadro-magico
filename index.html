@@ -264,12 +264,18 @@
       <button class="samplebtn" id="handRestart" style="display:none">🔄 Recomeçar recorte</button>
       <button class="samplebtn" id="handReset">Voltar pra mão padrão</button>
       <div class="hint" style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px">
-        <strong>Guardar pra sempre:</strong> o navegador às vezes apaga a mão salva. Baixe um arquivo dela e recarregue quando quiser — funciona em qualquer aparelho.
+        <strong>Guardar pra sempre:</strong> o navegador às vezes apaga a mão salva. A forma mais prática é <strong>baixar o app com a sua mão já embutida</strong> — vira um arquivo só, que você abre com 2 cliques (roda até offline) e a mão já vem pronta, sem procurar nada.
       </div>
-      <button class="samplebtn" id="handDownload" style="display:none">💾 Baixar arquivo da minha mão</button>
-      <label class="samplebtn" style="cursor:pointer">📂 Carregar mão de um arquivo
-        <input type="file" id="handLoadFile" accept=".json,application/json" style="display:none">
-      </label>
+      <button class="samplebtn" id="handBake" style="display:none">📥 Baixar o app com a minha mão embutida</button>
+      <details style="margin-top:8px">
+        <summary class="hint" style="cursor:pointer">Prefere guardar só a mão num arquivo separado?</summary>
+        <div style="margin-top:8px">
+          <button class="samplebtn" id="handDownload" style="display:none">💾 Baixar arquivo da minha mão</button>
+          <label class="samplebtn" style="cursor:pointer">📂 Carregar mão de um arquivo
+            <input type="file" id="handLoadFile" accept=".json,application/json" style="display:none">
+          </label>
+        </div>
+      </details>
     </details>
   </div>
 
@@ -294,6 +300,9 @@
 
 <script>
 "use strict";
+
+// mão embutida quando o app é baixado "com a minha mão" (fica null no original)
+var BAKED_HAND = null; /*__BAKED_HAND__*/
 
 // ---------- elementos ----------
 const el = id => document.getElementById(id);
@@ -986,6 +995,7 @@ function updateHandButtons() {
   el('handRestart').style.display = (handStep && handOriginal) ? 'inline-block' : 'none';
   const temMao = !!(customHand && customHand.tipX !== null && customHand.tipX !== undefined);
   el('handDownload').style.display = temMao ? 'inline-block' : 'none';
+  el('handBake').style.display = temMao ? 'inline-block' : 'none';
 }
 
 // apaga o fundo a partir de um clique — SÓ a área conectada ao ponto
@@ -1306,12 +1316,40 @@ function saveCustomHand() {
 function loadSavedHand() {
   try {
     const raw = localStorage.getItem('quadroMagicoHand');
-    if (!raw) return;
-    applyHandPayload(JSON.parse(raw),
-      'Sua mão salva já está carregada! ✅ (Dica: baixe o arquivo dela ali embaixo pra não perder se o navegador limpar.)');
+    if (raw) {
+      applyHandPayload(JSON.parse(raw),
+        'Sua mão salva já está carregada! ✅ (Dica: baixe o app com ela embutida ali embaixo pra nunca mais perder.)');
+      return;
+    }
   } catch (e) {}
+  // sem nada salvo no navegador? usa a mão embutida no app (se foi baixado "com a mão")
+  if (BAKED_HAND) applyHandPayload(BAKED_HAND, 'Mão embutida neste app carregada! ✅');
 }
 loadSavedHand();
+
+// baixar o APP INTEIRO com a mão embutida — um arquivo só, roda offline
+el('handBake').addEventListener('click', () => {
+  const payload = serializeHand(1600);
+  if (!payload) { el('handTipStatus').textContent = 'Primeiro recorte uma foto e marque a ponta da caneta.'; return; }
+  el('handTipStatus').textContent = 'Montando o app com a sua mão…';
+  fetch(location.href.split('#')[0].split('?')[0], { cache: 'no-store' })
+    .then(r => r.text())
+    .then(src => {
+      const inject = 'var BAKED_HAND = ' + JSON.stringify(payload) + '; /*__BAKED_HAND__*/';
+      const out = src.replace(/var BAKED_HAND = [\s\S]*?; \/\*__BAKED_HAND__\*\//, inject);
+      if (out === src) throw new Error('marcador não encontrado');
+      const blob = new Blob([out], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'quadro-magico-com-minha-mao.html';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      el('handTipStatus').textContent = 'App baixado com a sua mão embutida! 📥 Abra esse arquivo (2 cliques) — a mão já vem pronta, sem procurar nada, mesmo offline.';
+    })
+    .catch(() => {
+      el('handTipStatus').textContent = '⚠️ Não consegui montar o app aqui (talvez você já esteja no arquivo local). Faça isso pelo site online pedroaverbach.github.io/quadro-magico e depois use o arquivo baixado.';
+    });
+});
 
 // baixar a mão como arquivo (à prova de limpeza do navegador)
 el('handDownload').addEventListener('click', () => {
