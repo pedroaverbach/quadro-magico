@@ -77,6 +77,11 @@
     cursor: pointer; font-size: 0.8rem; padding: 2px 7px;
   }
   .scenebtns button:hover { border-color: var(--accent); color: var(--accent); }
+  .scenedur { text-align: center; margin-top: 5px; font-size: 0.8rem; color: var(--muted); }
+  .scenedur input {
+    width: 46px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 0.85rem; text-align: right; color: var(--ink);
+  }
 
   /* --- controls --- */
   .controls {
@@ -173,7 +178,7 @@
       <button class="samplebtn" id="sampleBtn">✨ Testar com um desenho de exemplo</button>
     </div>
     <input type="file" id="fileInput" accept="image/*" multiple>
-    <div class="hint" id="sceneHint" style="display:none">Ordem de desenho na cartolina — use ◀ ▶ pra reordenar e ✕ pra remover; arraste mais imagens pra adicionar:</div>
+    <div class="hint" id="sceneHint" style="display:none">Ordem de desenho na cartolina — ◀ ▶ reordena, ✕ remove, e o campo ⏱ define quantos segundos cada cena leva pra ser desenhada (o slider "duração" aplica pra todas de uma vez):</div>
     <div id="sceneList"></div>
   </div>
 
@@ -312,11 +317,11 @@ function loadFiles(files) {
     img.onload = () => {
       URL.revokeObjectURL(url);
       loaded[idx] = img;
-      if (--pending === 0) { sceneImages.push(...loaded.filter(Boolean)); scenesChanged(); }
+      if (--pending === 0) { sceneImages.push(...loaded.filter(Boolean).map(im => ({ img: im, dur: +el('duration').value }))); scenesChanged(); }
     };
     img.onerror = () => {
       setStatus('Não consegui abrir uma das imagens.', true);
-      if (--pending === 0) { sceneImages.push(...loaded.filter(Boolean)); scenesChanged(); }
+      if (--pending === 0) { sceneImages.push(...loaded.filter(Boolean).map(im => ({ img: im, dur: +el('duration').value }))); scenesChanged(); }
     };
     img.src = url;
   });
@@ -337,7 +342,8 @@ function renderSceneList() {
   const show = sceneImages.length > 0;
   box.style.display = show ? 'flex' : 'none';
   el('sceneHint').style.display = show ? 'block' : 'none';
-  sceneImages.forEach((img, i) => {
+  sceneImages.forEach((entry, i) => {
+    const img = entry.img;
     const item = document.createElement('div');
     item.className = 'sceneitem';
     const th = document.createElement('canvas');
@@ -364,7 +370,19 @@ function renderSceneList() {
     btns.appendChild(mk('▶', 'desenhar depois', () => {
       if (i < sceneImages.length - 1) { [sceneImages[i + 1], sceneImages[i]] = [sceneImages[i], sceneImages[i + 1]]; scenesChanged(); }
     }));
-    item.appendChild(num); item.appendChild(th); item.appendChild(btns);
+    const durRow = document.createElement('div');
+    durRow.className = 'scenedur';
+    const durInp = document.createElement('input');
+    durInp.type = 'number'; durInp.min = '1'; durInp.max = '60'; durInp.step = '1';
+    durInp.value = entry.dur;
+    durInp.title = 'segundos que esta cena leva pra ser desenhada';
+    durInp.addEventListener('change', () => {
+      entry.dur = Math.max(1, Math.min(60, Math.round(+durInp.value) || 5));
+      durInp.value = entry.dur;
+    });
+    durRow.appendChild(durInp);
+    durRow.appendChild(document.createTextNode(' ⏱ s'));
+    item.appendChild(num); item.appendChild(th); item.appendChild(durRow); item.appendChild(btns);
     box.appendChild(item);
   });
 }
@@ -410,13 +428,15 @@ el('sampleBtn').addEventListener('click', e => {
   g.beginPath(); g.moveTo(330, 610); g.lineTo(295, 595); g.moveTo(330, 610); g.lineTo(322, 572); g.stroke();
 
   const img = new Image();
-  img.onload = () => { sceneImages = [img]; scenesChanged(); };
+  img.onload = () => { sceneImages = [{ img, dur: +el('duration').value }]; scenesChanged(); };
   img.src = c.toDataURL();
 });
 
 // ---------- controles ----------
 el('duration').addEventListener('input', () => {
-  el('durationVal').textContent = el('duration').value + ' segundos';
+  el('durationVal').textContent = el('duration').value + ' segundos' + (sceneImages.length > 1 ? ' (cada cena)' : '');
+  sceneImages.forEach(entry => { entry.dur = +el('duration').value; });
+  renderSceneList();
 });
 el('sensitivity').addEventListener('input', () => {
   const v = +el('sensitivity').value;
@@ -433,7 +453,7 @@ function prepare() {
   canvas.width = W; canvas.height = H;
   if (!sceneImages.length) return;
 
-  scenes = sceneImages.map(img => prepareScene(img, W, H));
+  scenes = sceneImages.map(entry => prepareScene(entry.img, W, H));
   const n = scenes.length;
 
   // grade da cartolina (cada cena ocupa uma "célula"; linhas incompletas
@@ -1216,15 +1236,15 @@ function runAnimation(onDone) {
   const n = scenes.length;
   scenes.forEach(resetScene);
 
-  const drawMs = +el('duration').value * 1000;
   const moveMs = 950;    // passeio da câmera entre cenas
   const zoomMs = 2200;   // zoom out final
   const holdMs = 1800;   // segura o quadro completo
 
-  // linha do tempo: desenha cena 1 -> passeia -> desenha cena 2 -> … -> zoom out
+  // linha do tempo: cada cena tem a SUA duração, definida na lista
   const phases = [];
   scenes.forEach((sc, i) => {
-    phases.push({ type: 'draw', i, ms: Math.max(300, drawMs * sc.revealOrder.length / totalInk) });
+    const durMs = ((sceneImages[i] && sceneImages[i].dur) || +el('duration').value) * 1000;
+    phases.push({ type: 'draw', i, ms: Math.max(300, durMs) });
     if (i < n - 1) phases.push({ type: 'move', i, ms: moveMs });
   });
   if (n > 1) phases.push({ type: 'zoom', ms: zoomMs });
