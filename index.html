@@ -1156,14 +1156,34 @@ defaultHand.img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(HAND_SVG);
 
 let customHand = null; // {img, tipX, tipY, w, h} quando a pessoa envia a própria mão
 
+// calcula o tamanho da mão: fotos são ampliadas até o braço DELAS
+// atravessar a borda do vídeo mesmo escrevendo no canto oposto —
+// assim não precisa de emenda artificial nenhuma
+function handScale(hand) {
+  const [W, H] = el('format').value.split('x').map(Number);
+  const kAesthetic = (H * 0.55) / hand.h;
+  if (hand === defaultHand || !hand.arm) return { k: kAesthetic, reaches: false };
+  const dx = hand.arm.x - hand.tipX;
+  const dy = hand.arm.y - hand.tipY;
+  const cands = [];
+  if (dx > 1) cands.push(W / dx);
+  if (dy > 1) cands.push(H / dy);
+  if (!cands.length) return { k: kAesthetic, reaches: false };
+  const kNeeded = Math.min.apply(null, cands) * 1.15; // folga p/ inclinação e balanço
+  const kCap = (H * 3) / hand.h; // trava: braço curto demais viraria mão gigante
+  const k = Math.max(kAesthetic, Math.min(kNeeded, kCap));
+  return { k, reaches: kNeeded <= k + 0.0001 };
+}
+
 function drawHand(x, y, rot, lift) {
   const hand = (customHand && customHand.tipX !== null) ? customHand : defaultHand;
   if (hand.img.complete === false) return;
-  const k = (canvas.height * 0.55) / hand.h * (lift || 1);
+  const hs = handScale(hand);
+  const k = hs.k * (lift || 1);
   const cosR = Math.cos(rot || 0), sinR = Math.sin(rot || 0);
-  // braço/manga prolongado até fora da borda do vídeo — sem isso a mão
-  // parece flutuar; com isso parece uma filmagem de alguém desenhando
-  if (hand.arm) {
+  // emenda de cor até o canto só quando o braço da imagem não alcança a
+  // borda sozinho (mão ilustrada padrão, ou foto com braço muito curto)
+  if (hand.arm && !hs.reaches) {
     const rx = (hand.arm.x - hand.tipX) * k, ry = (hand.arm.y - hand.tipY) * k;
     const ax = x + rx * cosR - ry * sinR;
     const ay = y + rx * sinR + ry * cosR;
@@ -1410,7 +1430,19 @@ handPreview.addEventListener('click', e => {
     renderHandPreview(ix, iy);
     saveCustomHand();
     updateHandButtons();
-    el('handTipStatus').textContent = 'Ponta marcada! ✅ Pra não perder a mão, baixe o arquivo dela no botão "💾 Baixar arquivo da minha mão" ali embaixo.';
+    let armMsg = '';
+    if (customHand.arm) {
+      const hs = handScale(customHand);
+      const kEstetico = (720 * 0.55) / customHand.h;
+      if (!hs.reaches) {
+        armMsg = ' ⚠️ O braço da foto é muito curto — vou usar uma emenda de cor no fim dele. Pra ficar 100% natural, tire a foto com mais braço aparecendo.';
+      } else if (hs.k > kEstetico * 1.5) {
+        armMsg = ' 👍 Seu braço alcança a borda sem emenda — mas a mão vai aparecer bem grande na tela pra isso. Quanto mais braço na foto, menor a mão fica.';
+      } else {
+        armMsg = ' 👍 Seu braço alcança a borda do vídeo sem emenda nenhuma.';
+      }
+    }
+    el('handTipStatus').textContent = 'Ponta marcada! ✅' + armMsg + ' Pra não perder a mão, baixe o app com ela embutida ali embaixo.';
   }
 });
 
