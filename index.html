@@ -145,6 +145,26 @@
   }
   #handTipStatus { margin-top: 6px; font-size: 0.85rem; }
 
+  /* --- editor da cartolina --- */
+  #layoutBoard {
+    position: relative; width: 100%; background: #fff;
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+  .layItem {
+    position: absolute; border: 1.5px dashed var(--accent); border-radius: 4px;
+    cursor: grab; touch-action: none; box-sizing: border-box;
+  }
+  .layItem:active { cursor: grabbing; }
+  .layItem canvas { display: block; width: 100%; height: 100%; pointer-events: none; }
+  .layNum {
+    position: absolute; top: -10px; left: -10px; background: var(--accent); color: #fff;
+    border-radius: 999px; font-size: 0.72rem; font-weight: 700; padding: 1px 7px; pointer-events: none;
+  }
+  .layHandle {
+    position: absolute; right: -8px; bottom: -8px; width: 18px; height: 18px;
+    background: var(--accent); border: 2px solid #fff; border-radius: 5px; cursor: nwse-resize;
+  }
+
   /* --- stage --- */
   #stageCard { display: none; }
   #stage {
@@ -304,9 +324,20 @@
     <div class="actions">
       <button class="secondary" id="previewBtn">▶ Ver prévia</button>
       <button class="primary" id="renderBtn">🎬 Gerar vídeo</button>
+      <button class="secondary" id="layoutBtn" style="display:none">🖼️ Editar cartolina</button>
     </div>
     <div class="progressbar" id="progressbar"><div class="fill" id="progressfill"></div></div>
     <div id="status"></div>
+  </div>
+
+  <div class="card" id="layoutCard" style="display:none">
+    <h2 style="font-size:1.05rem; margin-bottom:6px">🖼️ Cartolina final</h2>
+    <p class="hint" style="color:var(--muted); font-size:0.85rem; margin-bottom:10px">Arraste cada desenho pra onde quiser e puxe o quadradinho azul do canto pra mudar o tamanho. O vídeo desenha cada um no lugar (com a câmera fechada) e o zoom out final revela essa composição.</p>
+    <div id="layoutBoard"></div>
+    <div class="actions">
+      <button class="secondary" id="layoutReset">↺ Redistribuir automaticamente</button>
+      <button class="primary" id="layoutDone">✅ Pronto</button>
+    </div>
   </div>
 
   <div class="card" id="resultCard">
@@ -592,24 +623,13 @@ function prepare() {
   canvas.width = W; canvas.height = H;
   if (!sceneImages.length) return;
 
-  scenes = sceneImages.map(entry => prepareScene(entry.img, W, H));
+  // com 2+ cenas, recorta o branco em volta de cada desenho antes de
+  // processar — assim o traço usa a resolução toda e a câmera pode fechar
+  const cropScenes = sceneImages.length > 1;
+  scenes = sceneImages.map(entry => prepareScene(entry.img, W, H, cropScenes));
   const n = scenes.length;
 
-  // grade da cartolina (cada cena ocupa uma "célula"; linhas incompletas
-  // ficam centralizadas pra cartolina final parecer equilibrada)
-  const cols = Math.ceil(Math.sqrt(n));
-  const rows = Math.ceil(n / cols);
-  for (let i = 0; i < n; i++) {
-    const r = (i / cols) | 0;
-    const inRow = Math.min(cols, n - r * cols);
-    scenes[i].cellX = ((i - r * cols) + (cols - inRow) / 2) * W;
-    scenes[i].cellY = r * H;
-  }
-  grid = {
-    worldW: cols * W, worldH: rows * H,
-    fitZoom: Math.min(W / (cols * W), H / (rows * H)),
-    cx: cols * W / 2, cy: rows * H / 2,
-  };
+  computeLayout();
 
   totalInk = scenes.reduce((sum, sc) => sum + sc.revealOrder.length, 0);
   if (!totalInk) {
@@ -624,26 +644,108 @@ function prepare() {
   // mostra a cartolina completa (como o vídeo termina)
   scenes.forEach(sc => revealPixels(sc, sc.revealOrder.length));
   drawWorld(cameraFinal());
+  el('layoutBtn').style.display = n > 1 ? 'inline-block' : 'none';
+  el('layoutCard').style.display = 'none';
+}
+
+// calcula onde cada cena fica na cartolina: usa a posição/tamanho que a
+// pessoa escolheu no editor, ou distribui numa grade compacta (área
+// desenhada aparada, ocupando 86% da célula)
+function computeLayout() {
+  const W = canvas.width, H = canvas.height;
+  const n = scenes.length;
+  const K = n === 1 ? 1 : Math.max(2, Math.ceil(Math.sqrt(n)));
+  grid = { worldW: K * W, worldH: K * H, fitZoom: 1 / K, cx: K * W / 2, cy: K * H / 2 };
+  const cols = Math.ceil(Math.sqrt(n));
+  const rows = Math.ceil(n / cols);
+  scenes.forEach((sc, i) => {
+    sc.src = n === 1 ? { bx: 0, by: 0, bw: W, bh: H } : sc.ink;
+    const lay = sceneImages[i] && sceneImages[i].layout;
+    if (n === 1) {
+      sc.rect = { x: 0, y: 0, w: W, h: H };
+    } else if (lay) {
+      const w = lay.fw * grid.worldW;
+      const h = w * sc.src.bh / sc.src.bw;
+      sc.rect = {
+        x: Math.max(0, Math.min(grid.worldW - w, lay.fx * grid.worldW)),
+        y: Math.max(0, Math.min(grid.worldH - h, lay.fy * grid.worldH)),
+        w, h,
+      };
+    } else {
+      const r = (i / cols) | 0;
+      const inRow = Math.min(cols, n - r * cols);
+      const cw = grid.worldW / cols, ch = grid.worldH / rows;
+      const cx0 = ((i - r * cols) + (cols - inRow) / 2) * cw;
+      const cy0 = r * ch;
+      const sfit = Math.min(cw * 0.86 / sc.src.bw, ch * 0.86 / sc.src.bh);
+      const w = sc.src.bw * sfit, h = sc.src.bh * sfit;
+      sc.rect = { x: cx0 + (cw - w) / 2, y: cy0 + (ch - h) / 2, w, h };
+    }
+  });
 }
 
 function cameraOf(i) {
-  return { cx: scenes[i].cellX + canvas.width / 2, cy: scenes[i].cellY + canvas.height / 2, z: 1 };
+  const W = canvas.width, H = canvas.height;
+  const sc = scenes[i];
+  if (scenes.length === 1) return { cx: W / 2, cy: H / 2, z: 1 };
+  // fecha a câmera pra cena preencher a tela — mas sem esticar demais
+  // os pixels (senão o traço fica borrado)
+  const zFit = Math.min(W * 0.86 / sc.rect.w, H * 0.86 / sc.rect.h);
+  const zMax = 1.35 * sc.src.bw / sc.rect.w;
+  const z = Math.min(zFit, zMax);
+  return { cx: sc.rect.x + sc.rect.w / 2, cy: sc.rect.y + sc.rect.h / 2, z };
 }
 function cameraFinal() {
   return scenes.length === 1 ? cameraOf(0) : { cx: grid.cx, cy: grid.cy, z: grid.fitZoom };
 }
 
+// acha a caixa do desenho dentro da imagem original (numa versão pequena,
+// só pra saber onde o traço está e recortar o branco em volta)
+function inkBBoxOfImage(img, threshold) {
+  const pw = 320, ph = Math.max(1, Math.round(320 * img.height / img.width));
+  const p = document.createElement('canvas');
+  p.width = pw; p.height = ph;
+  const g = p.getContext('2d', { willReadFrequently: true });
+  g.fillStyle = '#fff'; g.fillRect(0, 0, pw, ph);
+  g.drawImage(img, 0, 0, pw, ph);
+  const d = g.getImageData(0, 0, pw, ph).data;
+  let x0 = pw, y0 = ph, x1 = -1, y1 = -1;
+  for (let i = 0; i < pw * ph; i++) {
+    const q = i * 4;
+    if (d[q + 3] < 100) continue;
+    if (255 - Math.min(d[q], d[q + 1], d[q + 2]) > threshold) {
+      const xx = i % pw, yy = (i / pw) | 0;
+      if (xx < x0) x0 = xx; if (xx > x1) x1 = xx;
+      if (yy < y0) y0 = yy; if (yy > y1) y1 = yy;
+    }
+  }
+  if (x1 < 0) return null;
+  const sx = img.width / pw, sy = img.height / ph;
+  const m = 3; // folguinha
+  const rx = Math.max(0, (x0 - m) * sx), ry = Math.max(0, (y0 - m) * sy);
+  return {
+    x: rx, y: ry,
+    w: Math.min(img.width - rx, (x1 - x0 + 1 + 2 * m) * sx),
+    h: Math.min(img.height - ry, (y1 - y0 + 1 + 2 * m) * sy),
+  };
+}
+
 // processa UMA imagem: detecta traços e calcula a ordem de desenho
-function prepareScene(img, W, H) {
+function prepareScene(img, W, H, cropInk) {
   const off = document.createElement('canvas');
   off.width = W; off.height = H;
   const octx = off.getContext('2d', { willReadFrequently: true });
   const margin = Math.round(Math.min(W, H) * 0.05);
-  const scale = Math.min((W - margin * 2) / img.width, (H - margin * 2) / img.height);
-  const dw = img.width * scale, dh = img.height * scale;
+  let srcX = 0, srcY = 0, srcW = img.width, srcH = img.height;
+  if (cropInk) {
+    const bb = inkBBoxOfImage(img, +el('sensitivity').value);
+    if (bb) { srcX = bb.x; srcY = bb.y; srcW = bb.w; srcH = bb.h; }
+  }
+  const scale = Math.min((W - margin * 2) / srcW, (H - margin * 2) / srcH);
+  const dw = srcW * scale, dh = srcH * scale;
   octx.fillStyle = '#fff';
   octx.fillRect(0, 0, W, H);
-  octx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  octx.drawImage(img, srcX, srcY, srcW, srcH, (W - dw) / 2, (H - dh) / 2, dw, dh);
   const srcData = octx.getImageData(0, 0, W, H);
 
   const scene = {
@@ -652,7 +754,8 @@ function prepareScene(img, W, H) {
     revealCanvas: document.createElement('canvas'),
     revealData: new ImageData(W, H),
     revealed: 0,
-    cellX: 0, cellY: 0,
+    ink: { bx: 0, by: 0, bw: W, bh: H }, // caixa da área desenhada
+    src: null, rect: null,               // recorte de origem e posição na cartolina
   };
   scene.revealCanvas.width = W;
   scene.revealCanvas.height = H;
@@ -662,14 +765,25 @@ function prepareScene(img, W, H) {
   const threshold = +el('sensitivity').value;
   const mask = new Uint8Array(W * H);
   let inkCount = 0;
+  let ix0 = W, iy0 = H, ix1 = -1, iy1 = -1;
   for (let i = 0; i < W * H; i++) {
     const p = i * 4;
     const a = d[p + 3];
     if (a < 100) continue;
     const distWhite = 255 - Math.min(d[p], d[p + 1], d[p + 2]);
-    if (distWhite > threshold) { mask[i] = 1; inkCount++; }
+    if (distWhite > threshold) {
+      mask[i] = 1; inkCount++;
+      const xx = i % W, yy = (i / W) | 0;
+      if (xx < ix0) ix0 = xx; if (xx > ix1) ix1 = xx;
+      if (yy < iy0) iy0 = yy; if (yy > iy1) iy1 = yy;
+    }
   }
   if (inkCount === 0) return scene;
+  // caixa da tinta com uma folguinha, pra não cortar traço
+  const pad = 10;
+  ix0 = Math.max(0, ix0 - pad); iy0 = Math.max(0, iy0 - pad);
+  ix1 = Math.min(W - 1, ix1 + pad); iy1 = Math.min(H - 1, iy1 + pad);
+  scene.ink = { bx: ix0, by: iy0, bw: ix1 - ix0 + 1, bh: iy1 - iy0 + 1 };
 
   // 2) separa em componentes conectados (cada "traço" isolado)
   const labels = new Int32Array(W * H).fill(-1);
@@ -867,7 +981,10 @@ function drawWorld(cam) {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, W, H);
   ctx.setTransform(cam.z, 0, 0, cam.z, W / 2 - cam.cx * cam.z, H / 2 - cam.cy * cam.z);
-  for (const sc of scenes) ctx.drawImage(sc.revealCanvas, sc.cellX, sc.cellY);
+  for (const sc of scenes) {
+    ctx.drawImage(sc.revealCanvas, sc.src.bx, sc.src.by, sc.src.bw, sc.src.bh,
+                  sc.rect.x, sc.rect.y, sc.rect.w, sc.rect.h);
+  }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
@@ -883,7 +1000,98 @@ function stopAnimation() {
 function setButtons(enabled) {
   el('previewBtn').disabled = !enabled;
   el('renderBtn').disabled = !enabled;
+  el('layoutBtn').disabled = !enabled;
 }
+
+// ---------- editor da cartolina (posição e tamanho de cada cena) ----------
+el('layoutBtn').addEventListener('click', () => {
+  if (!scenes || scenes.length < 2) return;
+  el('layoutCard').style.display = 'block';
+  buildLayoutBoard();
+  el('layoutCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+function saveSceneLayout(i, sc) {
+  sceneImages[i].layout = {
+    fx: sc.rect.x / grid.worldW,
+    fy: sc.rect.y / grid.worldH,
+    fw: sc.rect.w / grid.worldW,
+  };
+}
+
+function buildLayoutBoard() {
+  const board = el('layoutBoard');
+  board.style.aspectRatio = grid.worldW + ' / ' + grid.worldH;
+  board.innerHTML = '';
+  scenes.forEach((sc, i) => {
+    const it = document.createElement('div');
+    it.className = 'layItem';
+    const th = document.createElement('canvas');
+    const tw = 220, thh = Math.max(1, Math.round(220 * sc.src.bh / sc.src.bw));
+    th.width = tw; th.height = thh;
+    const g = th.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, tw, thh);
+    g.drawImage(sc.revealCanvas, sc.src.bx, sc.src.by, sc.src.bw, sc.src.bh, 0, 0, tw, thh);
+    const num = document.createElement('div');
+    num.className = 'layNum';
+    num.textContent = i + 1;
+    const hd = document.createElement('div');
+    hd.className = 'layHandle';
+    it.appendChild(th); it.appendChild(num); it.appendChild(hd);
+    board.appendChild(it);
+    placeLayItem(it, sc);
+
+    let mode = null, startX = 0, startY = 0, startRect = null;
+    it.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      mode = e.target === hd ? 'resize' : 'move';
+      startX = e.clientX; startY = e.clientY;
+      startRect = { x: sc.rect.x, y: sc.rect.y, w: sc.rect.w, h: sc.rect.h };
+      try { it.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    it.addEventListener('pointermove', e => {
+      if (!mode) return;
+      const br = board.getBoundingClientRect();
+      const k = grid.worldW / br.width; // pixels da tela -> unidades da cartolina
+      const dx = (e.clientX - startX) * k;
+      const dy = (e.clientY - startY) * k;
+      if (mode === 'move') {
+        sc.rect.x = Math.max(0, Math.min(grid.worldW - sc.rect.w, startRect.x + dx));
+        sc.rect.y = Math.max(0, Math.min(grid.worldH - sc.rect.h, startRect.y + dy));
+      } else {
+        const nw = Math.max(grid.worldW * 0.08, Math.min(grid.worldW, startRect.w + dx));
+        sc.rect.w = nw;
+        sc.rect.h = nw * sc.src.bh / sc.src.bw;
+        sc.rect.x = Math.max(0, Math.min(grid.worldW - sc.rect.w, sc.rect.x));
+        sc.rect.y = Math.max(0, Math.min(grid.worldH - sc.rect.h, sc.rect.y));
+      }
+      saveSceneLayout(i, sc);
+      placeLayItem(it, sc);
+      drawWorld(cameraFinal()); // o palco mostra o resultado ao vivo
+    });
+    ['pointerup', 'pointercancel'].forEach(ev => it.addEventListener(ev, () => { mode = null; }));
+  });
+}
+
+function placeLayItem(it, sc) {
+  it.style.left = (100 * sc.rect.x / grid.worldW) + '%';
+  it.style.top = (100 * sc.rect.y / grid.worldH) + '%';
+  it.style.width = (100 * sc.rect.w / grid.worldW) + '%';
+  it.style.height = (100 * sc.rect.h / grid.worldH) + '%';
+}
+
+el('layoutReset').addEventListener('click', () => {
+  sceneImages.forEach(entry => { delete entry.layout; });
+  computeLayout();
+  buildLayoutBoard();
+  drawWorld(cameraFinal());
+});
+
+el('layoutDone').addEventListener('click', () => {
+  el('layoutCard').style.display = 'none';
+  drawWorld(cameraFinal());
+  setStatus('Cartolina ajustada! ✅ Roda a prévia pra ver a câmera desenhando cada cena no lugar novo.');
+});
 
 // ---------- a mão que desenha ----------
 // mão padrão: ilustração vetorial (ponta da caneta fica em 14,14)
@@ -1498,17 +1706,29 @@ function runAnimation(onDone) {
         cam = cameraOf(ph.i);
         if (sc.revealed > 0) {
           const last = sc.revealOrder[sc.revealed - 1];
-          handTarget = { x: sc.cellX + last % W, y: sc.cellY + ((last / W) | 0) };
+          const px = last % W, py = (last / W) | 0;
+          handTarget = {
+            x: sc.rect.x + (px - sc.src.bx) * sc.rect.w / sc.src.bw,
+            y: sc.rect.y + (py - sc.src.by) * sc.rect.h / sc.src.bh,
+          };
           drawing = true;
         }
       } else if (ph.type === 'move') {
         const e2 = ease(pr);
         const a2 = cameraOf(ph.i), b2 = cameraOf(ph.i + 1);
-        cam = { cx: a2.cx + (b2.cx - a2.cx) * e2, cy: a2.cy + (b2.cy - a2.cy) * e2, z: 1 };
+        cam = {
+          cx: a2.cx + (b2.cx - a2.cx) * e2,
+          cy: a2.cy + (b2.cy - a2.cy) * e2,
+          z: a2.z + (b2.z - a2.z) * e2,
+        };
         const nx = scenes[ph.i + 1];
         if (nx.revealOrder.length) {
           const first = nx.revealOrder[0];
-          handTarget = { x: nx.cellX + first % W, y: nx.cellY + ((first / W) | 0) };
+          const px = first % W, py = (first / W) | 0;
+          handTarget = {
+            x: nx.rect.x + (px - nx.src.bx) * nx.rect.w / nx.src.bw,
+            y: nx.rect.y + (py - nx.src.by) * nx.rect.h / nx.src.bh,
+          };
         }
       } else if (ph.type === 'zoom') {
         const e2 = ease(pr);
