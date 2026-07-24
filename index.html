@@ -2,8 +2,16 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Quadro Mágico — Whiteboard Animation</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2563eb">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Quadro Mágico">
 <style>
   :root {
     --ink: #1f2733;
@@ -28,6 +36,16 @@
   header h1 { font-size: 1.9rem; letter-spacing: -0.02em; }
   header h1 .pen { display: inline-block; transform: rotate(-10deg); }
   header p { color: var(--muted); margin-top: 6px; font-size: 0.95rem; }
+  #installBtn {
+    margin-top: 14px; background: var(--accent); color: #fff; border: none;
+    border-radius: 10px; padding: 10px 20px; font-size: 0.92rem; font-weight: 600; cursor: pointer;
+  }
+  #installBtn:hover { background: var(--accent-dark); }
+  #iosInstallTip {
+    margin-top: 12px; font-size: 0.85rem; color: var(--muted); background: #fff;
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px;
+    max-width: 420px; margin-left: auto; margin-right: auto; line-height: 1.45;
+  }
 
   .card {
     background: var(--card);
@@ -180,6 +198,8 @@
   <header>
     <h1><span class="pen">✍️</span> Quadro Mágico</h1>
     <p>Envie uma imagem estilo quadro branco e receba um vídeo dela sendo desenhada.</p>
+    <button id="installBtn" style="display:none">📲 Instalar como app</button>
+    <div id="iosInstallTip" style="display:none">Para instalar: toque em <strong>Compartilhar</strong> ⬆️ e depois em <strong>“Adicionar à Tela de Início”</strong>.</div>
   </header>
 
   <div class="card">
@@ -303,6 +323,40 @@
 
 // mão embutida quando o app é baixado "com a minha mão" (fica null no original)
 var BAKED_HAND = null; /*__BAKED_HAND__*/
+
+// ---------- app instalável (PWA) ----------
+(function () {
+  // service worker só faz sentido servido por http(s); no arquivo local (file://) ele é ignorado
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  let deferred = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferred = e;
+    const b = document.getElementById('installBtn');
+    if (b && !standalone) b.style.display = 'inline-block';
+  });
+  window.addEventListener('DOMContentLoaded', () => {
+    const b = document.getElementById('installBtn');
+    if (b) b.addEventListener('click', async () => {
+      if (!deferred) return;
+      deferred.prompt();
+      await deferred.userChoice;
+      deferred = null;
+      b.style.display = 'none';
+    });
+    // iPhone/iPad não disparam beforeinstallprompt: mostramos as instruções
+    const iOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const tip = document.getElementById('iosInstallTip');
+    if (iOS && !standalone && tip) tip.style.display = 'block';
+  });
+  window.addEventListener('appinstalled', () => {
+    const b = document.getElementById('installBtn');
+    if (b) b.style.display = 'none';
+  });
+})();
 
 // ---------- elementos ----------
 const el = id => document.getElementById(id);
