@@ -229,7 +229,7 @@
       <button class="samplebtn" id="sampleBtn">✨ Testar com um desenho de exemplo</button>
     </div>
     <input type="file" id="fileInput" accept="image/*" multiple>
-    <div class="hint" id="sceneHint" style="display:none">Ordem de desenho na cartolina — <strong>arraste</strong> as miniaturas pra reordenar ou <strong>digite o número</strong> no selo azul; ✕ remove; ⏱ define os segundos de cada cena; <strong>🎤 grava sua narração</strong> (a cena passa a durar o tempo da fala, e a voz sai no vídeo final):</div>
+    <div class="hint" id="sceneHint" style="display:none">Ordem de desenho na cartolina — <strong>arraste</strong> as miniaturas pra reordenar ou <strong>digite o número</strong> no selo azul; ✕ remove; ⏱ define os segundos de cada cena; <strong>🎤 grava sua narração</strong> (desenho + pausa duram exatamente o tempo da fala, e a voz sai no vídeo final):</div>
     <div id="sceneList"></div>
   </div>
 
@@ -1786,8 +1786,15 @@ function runAnimation(onDone, audioDest) {
   const phases = [];
   scenes.forEach((sc, i) => {
     const entry = sceneImages[i] || {};
-    const durMs = entry.audio ? entry.audio.duration * 1000
-                              : (entry.dur || +el('duration').value) * 1000;
+    let durMs;
+    if (entry.audio) {
+      // a fala cobre desenho + pausa: o traço termina um pouco antes e o
+      // resto da narração toca por cima da cena já pronta
+      const temPausa = n > 1 && pauseMs > 0;
+      durMs = Math.max(300, entry.audio.duration * 1000 - (temPausa ? pauseMs : 0));
+    } else {
+      durMs = (entry.dur || +el('duration').value) * 1000;
+    }
     phases.push({ type: 'draw', i, ms: Math.max(300, durMs), audio: entry.audio || null, audioStarted: false });
     if (n > 1 && pauseMs > 0) phases.push({ type: 'pause', i, ms: pauseMs });
     if (i < n - 1) phases.push({ type: 'move', i, ms: moveMs });
