@@ -229,7 +229,7 @@
       <button class="samplebtn" id="sampleBtn">✨ Testar com um desenho de exemplo</button>
     </div>
     <input type="file" id="fileInput" accept="image/*" multiple>
-    <div class="hint" id="sceneHint" style="display:none">Ordem de desenho na cartolina — <strong>arraste</strong> as miniaturas pra reordenar ou <strong>digite o número</strong> no selo azul; ✕ remove; o campo ⏱ define os segundos de cada cena (o slider "duração" aplica pra todas):</div>
+    <div class="hint" id="sceneHint" style="display:none">Ordem de desenho na cartolina — <strong>arraste</strong> as miniaturas pra reordenar ou <strong>digite o número</strong> no selo azul; ✕ remove; ⏱ define os segundos de cada cena; <strong>🎤 grava sua narração</strong> (a cena passa a durar o tempo da fala, e a voz sai no vídeo final):</div>
     <div id="sceneList"></div>
   </div>
 
@@ -258,6 +258,11 @@
           <option value="texto-fim">Desenho primeiro, texto no fim</option>
           <option value="texto-ini">Texto primeiro, desenho depois</option>
         </select>
+      </div>
+      <div class="control">
+        <label for="scenePause">Pausa após cada cena</label>
+        <input type="range" id="scenePause" min="0" max="5" value="1" step="0.5">
+        <span class="val" id="scenePauseVal">1 s</span>
       </div>
       <div class="control">
         <label for="sensitivity">Sensibilidade do traço</label>
@@ -400,6 +405,22 @@ let grid = null;          // layout da cartolina (grade e zoom de encaixe)
 let totalInk = 0;
 let animHandle = null;    // requestAnimationFrame em andamento
 let recorder = null;
+let audioCtx = null;      // motor de áudio (narração)
+let activeAudioSources = [];
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playSceneAudio(audio, offsetSec, extraDest) {
+  const a = getAudioCtx();
+  const src = a.createBufferSource();
+  src.buffer = audio.buffer;
+  src.connect(a.destination);
+  if (extraDest) src.connect(extraDest);
+  src.start(0, Math.max(0, Math.min(offsetSec || 0, audio.duration - 0.01)));
+  activeAudioSources.push(src);
+}
 
 // ---------- upload (aceita várias imagens) ----------
 const dropzone = el('dropzone');
@@ -542,19 +563,76 @@ function renderSceneList() {
     item.addEventListener('pointercancel', finishDrag);
     const durRow = document.createElement('div');
     durRow.className = 'scenedur';
-    const durInp = document.createElement('input');
-    durInp.type = 'number'; durInp.min = '1'; durInp.max = '60'; durInp.step = '1';
-    durInp.value = entry.dur;
-    durInp.title = 'segundos que esta cena leva pra ser desenhada';
-    durInp.addEventListener('change', () => {
-      entry.dur = Math.max(1, Math.min(60, Math.round(+durInp.value) || 5));
+    if (entry.audio) {
+      durRow.textContent = '🎙 ' + entry.audio.duration.toFixed(1) + 's (fala)';
+      durRow.title = 'a duração desta cena segue a narração gravada';
+    } else {
+      const durInp = document.createElement('input');
+      durInp.type = 'number'; durInp.min = '1'; durInp.max = '60'; durInp.step = '1';
       durInp.value = entry.dur;
-    });
-    durRow.appendChild(durInp);
-    durRow.appendChild(document.createTextNode(' ⏱ s'));
-    item.appendChild(num); item.appendChild(th); item.appendChild(durRow); item.appendChild(btns);
+      durInp.title = 'segundos que esta cena leva pra ser desenhada';
+      durInp.addEventListener('change', () => {
+        entry.dur = Math.max(1, Math.min(60, Math.round(+durInp.value) || 5));
+        durInp.value = entry.dur;
+      });
+      durRow.appendChild(durInp);
+      durRow.appendChild(document.createTextNode(' ⏱ s'));
+    }
+    const micRow = document.createElement('div');
+    micRow.className = 'scenebtns';
+    const micBtn = document.createElement('button');
+    const gravandoEsta = micRecorder && micSceneIdx === i;
+    micBtn.textContent = gravandoEsta ? '⏹ parar' : (entry.audio ? '🎤 regravar' : '🎤 narrar');
+    if (gravandoEsta) micBtn.style.cssText = 'background:#dc2626;color:#fff;border-color:#dc2626';
+    micBtn.title = 'grave sua voz — a cena vai durar o tempo exato da fala';
+    micBtn.addEventListener('click', () => toggleMicRecord(i));
+    micRow.appendChild(micBtn);
+    if (entry.audio && !gravandoEsta) {
+      const pl = document.createElement('button');
+      pl.textContent = '▶';
+      pl.title = 'ouvir a narração';
+      pl.addEventListener('click', () => playSceneAudio(entry.audio, 0, null));
+      const delA = document.createElement('button');
+      delA.textContent = '✕';
+      delA.title = 'apagar a narração';
+      delA.addEventListener('click', () => { entry.audio = null; renderSceneList(); });
+      micRow.appendChild(pl); micRow.appendChild(delA);
+    }
+    item.appendChild(num); item.appendChild(th); item.appendChild(durRow); item.appendChild(micRow); item.appendChild(btns);
     box.appendChild(item);
   });
+}
+
+// ---------- narração por cena (microfone) ----------
+let micRecorder = null, micSceneIdx = null, micStream = null;
+async function toggleMicRecord(i) {
+  if (micRecorder) { try { micRecorder.stop(); } catch (e) {} return; }
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    setStatus('Não consegui acessar o microfone — verifica a permissão do navegador. 🎤', true);
+    return;
+  }
+  const chunks = [];
+  micRecorder = new MediaRecorder(micStream);
+  micSceneIdx = i;
+  micRecorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  micRecorder.onstop = async () => {
+    micStream.getTracks().forEach(tr => tr.stop());
+    const blob = new Blob(chunks, { type: micRecorder.mimeType });
+    micRecorder = null; micSceneIdx = null;
+    try {
+      const audioBuf = await getAudioCtx().decodeAudioData(await blob.arrayBuffer());
+      sceneImages[i].audio = { buffer: audioBuf, duration: audioBuf.duration };
+      setStatus('Narração da cena ' + (i + 1) + ' gravada (' + audioBuf.duration.toFixed(1) + 's). A cena vai durar exatamente o tempo da fala, e a voz sai no vídeo final. 🎙');
+    } catch (e) {
+      setStatus('Não consegui processar a gravação — tenta de novo.', true);
+    }
+    renderSceneList();
+  };
+  micRecorder.start();
+  setStatus('Gravando a narração da cena ' + (i + 1) + '… fala à vontade e clica em ⏹ quando terminar.');
+  renderSceneList();
 }
 
 // desenho de exemplo, gerado na hora (substitui a lista)
@@ -615,6 +693,9 @@ el('sensitivity').addEventListener('input', () => {
 });
 el('format').addEventListener('change', () => { if (sceneImages.length) prepare(); });
 el('order').addEventListener('change', () => { if (sceneImages.length) prepare(); });
+el('scenePause').addEventListener('input', () => {
+  el('scenePauseVal').textContent = el('scenePause').value + ' s';
+});
 
 // ---------- pipeline: imagens -> cartolina com câmera ----------
 function prepare() {
@@ -991,6 +1072,8 @@ function drawWorld(cam) {
 // ---------- animação ----------
 function stopAnimation() {
   if (animHandle) { cancelAnimationFrame(animHandle); animHandle = null; }
+  activeAudioSources.forEach(src => { try { src.stop(); } catch (e) {} });
+  activeAudioSources = [];
   if (recorder && recorder.state !== 'inactive') { try { recorder.stop(); } catch (e) {} }
   recorder = null;
   setButtons(true);
@@ -1688,7 +1771,7 @@ el('handReset').addEventListener('click', () => {
   el('handTipStatus').textContent = 'Voltei pra mão ilustrada padrão.';
 });
 
-function runAnimation(onDone) {
+function runAnimation(onDone, audioDest) {
   const W = canvas.width, H = canvas.height;
   const n = scenes.length;
   scenes.forEach(resetScene);
@@ -1696,12 +1779,17 @@ function runAnimation(onDone) {
   const moveMs = 950;    // passeio da câmera entre cenas
   const zoomMs = 2200;   // zoom out final
   const holdMs = 1800;   // segura o quadro completo
+  const pauseMs = Math.round((+el('scenePause').value || 0) * 1000);
 
-  // linha do tempo: cada cena tem a SUA duração, definida na lista
+  // linha do tempo: cada cena dura o tempo da narração (se gravada) ou o
+  // definido na lista; depois de desenhada, fica parada na tela (pausa)
   const phases = [];
   scenes.forEach((sc, i) => {
-    const durMs = ((sceneImages[i] && sceneImages[i].dur) || +el('duration').value) * 1000;
-    phases.push({ type: 'draw', i, ms: Math.max(300, durMs) });
+    const entry = sceneImages[i] || {};
+    const durMs = entry.audio ? entry.audio.duration * 1000
+                              : (entry.dur || +el('duration').value) * 1000;
+    phases.push({ type: 'draw', i, ms: Math.max(300, durMs), audio: entry.audio || null, audioStarted: false });
+    if (n > 1 && pauseMs > 0) phases.push({ type: 'pause', i, ms: pauseMs });
     if (i < n - 1) phases.push({ type: 'move', i, ms: moveMs });
   });
   if (n > 1) phases.push({ type: 'zoom', ms: zoomMs });
@@ -1734,6 +1822,10 @@ function runAnimation(onDone) {
       const pr = Math.max(0, (t - acc) / ph.ms);
       if (ph.type === 'draw') {
         const sc = scenes[ph.i];
+        if (ph.audio && !ph.audioStarted) {
+          ph.audioStarted = true;
+          playSceneAudio(ph.audio, (t - acc) / 1000, audioDest);
+        }
         revealPixels(sc, Math.min(sc.revealOrder.length, Math.floor(sc.revealOrder.length * pr)));
         cam = cameraOf(ph.i);
         if (sc.revealed > 0) {
@@ -1744,6 +1836,18 @@ function runAnimation(onDone) {
             y: sc.rect.y + (py - sc.src.by) * sc.rect.h / sc.src.bh,
           };
           drawing = true;
+        }
+      } else if (ph.type === 'pause') {
+        // cena pronta descansando na tela: câmera parada, mão levantada
+        cam = cameraOf(ph.i);
+        const sc = scenes[ph.i];
+        if (sc.revealOrder.length) {
+          const last = sc.revealOrder[sc.revealOrder.length - 1];
+          const px = last % W, py = (last / W) | 0;
+          handTarget = {
+            x: sc.rect.x + (px - sc.src.bx) * sc.rect.w / sc.src.bw,
+            y: sc.rect.y + (py - sc.src.by) * sc.rect.h / sc.src.bh,
+          };
         }
       } else if (ph.type === 'move') {
         const e2 = ease(pr);
@@ -1831,12 +1935,18 @@ el('renderBtn').addEventListener('click', () => {
   if (!scenes || !totalInk) return;
   stopAnimation();
 
-  const candidates = [
+  const anyAudio = sceneImages.some(en => en && en.audio);
+  const candidates = (anyAudio ? [
+    { mime: 'video/mp4;codecs=avc1.64001f,mp4a.40.2', ext: 'mp4' },
+    { mime: 'video/mp4', ext: 'mp4' },
+    { mime: 'video/webm;codecs=vp9,opus', ext: 'webm' },
+    { mime: 'video/webm', ext: 'webm' },
+  ] : [
     { mime: 'video/mp4;codecs=avc1.64001f', ext: 'mp4' },
     { mime: 'video/mp4', ext: 'mp4' },
     { mime: 'video/webm;codecs=vp9', ext: 'webm' },
     { mime: 'video/webm', ext: 'webm' },
-  ].filter(c => window.MediaRecorder && MediaRecorder.isTypeSupported(c.mime));
+  ]).filter(c => window.MediaRecorder && MediaRecorder.isTypeSupported(c.mime));
 
   if (!candidates.length) {
     setStatus('Seu navegador não suporta gravação de vídeo. Tenta usar o Chrome ou o Safari mais recentes.', true);
@@ -1857,11 +1967,24 @@ function recordWith(candidates, idx) {
     : 'O primeiro formato não funcionou neste navegador — regravando em ' + chosen.ext.toUpperCase() + '…');
 
   const stream = canvas.captureStream(30);
+  let audioDest = null, keepAlive = null;
+  if (sceneImages.some(en => en && en.audio)) {
+    const a = getAudioCtx();
+    audioDest = a.createMediaStreamDestination();
+    audioDest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
+    // silêncio contínuo: mantém a trilha de áudio viva o vídeo inteiro,
+    // senão o gravador corta o arquivo quando ninguém está narrando
+    keepAlive = a.createConstantSource();
+    keepAlive.offset.value = 0;
+    keepAlive.connect(audioDest);
+    keepAlive.start();
+  }
   const chunks = [];
   recorder = new MediaRecorder(stream, { mimeType: chosen.mime, videoBitsPerSecond: 8_000_000 });
   recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
   recorder.onstop = () => {
     recorder = null;
+    if (keepAlive) { try { keepAlive.stop(); } catch (e) {} keepAlive = null; }
     const blob = new Blob(chunks, { type: chosen.mime.split(';')[0] });
     // arquivo suspeito de estar vazio? (~menos de 30 KB pra um vídeo inteiro)
     if (blob.size < 30_000 && idx + 1 < candidates.length) {
@@ -1884,7 +2007,7 @@ function recordWith(candidates, idx) {
   };
   recorder.start(250);
 
-  runAnimation(() => { if (recorder && recorder.state !== 'inactive') recorder.stop(); });
+  runAnimation(() => { if (recorder && recorder.state !== 'inactive') recorder.stop(); }, audioDest);
 }
 
 function setStatus(msg, isError) {
