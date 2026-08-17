@@ -12,346 +12,653 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Quadro Mágico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #1f2733;
-    --paper: #f4f1ea;
+    --ink: #1b2733;
+    --paper: #fdfdfc;
     --card: #ffffff;
-    --accent: #2563eb;
-    --accent-dark: #1d4ed8;
-    --red: #dc2626;
-    --muted: #6b7280;
-    --border: #e2ddd2;
+    --border: #dfe3ea;
+    --blue: #2563eb;
+    --blue-dark: #1d4ed8;
+    --red: #e11d48;
+    --red-dark: #be123c;
+    --green: #16a34a;
+    --green-dark: #15803d;
+    --postit: #ffe066;
+    --postit-ink: #5c4a00;
+    --muted: #64707f;
+    --accent: var(--blue);
+    --accent-dark: var(--blue-dark);
+    --hand: 'Caveat', 'Bradley Hand', 'Segoe Script', cursive;
+    --body: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--body);
     background: var(--paper);
+    background-image: radial-gradient(#e3e7ee 1px, transparent 1px);
+    background-size: 22px 22px;
     color: var(--ink);
     min-height: 100vh;
-    padding: 24px 16px 60px;
+    padding: 26px 16px 70px;
+    line-height: 1.5;
   }
   .wrap { max-width: 980px; margin: 0 auto; }
-  header { text-align: center; margin-bottom: 28px; }
-  header h1 { font-size: 1.9rem; letter-spacing: -0.02em; }
-  header h1 .pen { display: inline-block; transform: rotate(-10deg); }
-  header p { color: var(--muted); margin-top: 6px; font-size: 0.95rem; }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+  button { font-family: var(--body); cursor: pointer; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .hint { color: var(--muted); font-size: 0.85rem; line-height: 1.45; }
+
+  /* ---------- ícones ---------- */
+  .ic { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px; flex: none; }
+
+  /* ---------- cabeçalho ---------- */
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 30px; }
+  header .logo { width: 46px; height: 46px; border-radius: 11px; flex: none; box-shadow: 0 2px 6px rgba(27,39,51,.14); }
+  header .titles { flex: 1; min-width: 0; }
+  header h1 { font-family: var(--hand); font-weight: 700; font-size: 2.15rem; line-height: 1; letter-spacing: .01em; }
+  header .tagline { color: var(--muted); font-size: .92rem; margin-top: 2px; }
   #installBtn {
-    margin-top: 14px; background: var(--accent); color: #fff; border: none;
-    border-radius: 10px; padding: 10px 20px; font-size: 0.92rem; font-weight: 600; cursor: pointer;
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 10px; padding: 8px 14px; font-size: .85rem; font-weight: 700; flex: none;
   }
-  #installBtn:hover { background: var(--accent-dark); }
+  #installBtn:hover { border-color: var(--blue); color: var(--blue); }
   #iosInstallTip {
-    margin-top: 12px; font-size: 0.85rem; color: var(--muted); background: #fff;
+    margin: -14px auto 22px; font-size: 0.85rem; color: var(--muted); background: #fff;
     border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px;
-    max-width: 420px; margin-left: auto; margin-right: auto; line-height: 1.45;
+    max-width: 460px; line-height: 1.45; text-align: center;
   }
 
-  .card {
+  /* ---------- post-its ---------- */
+  .postit {
+    background: var(--postit); color: var(--postit-ink);
+    font-family: var(--hand); font-weight: 600; font-size: 1.1rem; line-height: 1.25;
+    padding: 12px 14px 14px; max-width: 190px;
+    transform: rotate(var(--rot, -2deg));
+    box-shadow: 2px 4px 8px rgba(27,39,51,.14);
+    border-radius: 2px;
+  }
+
+  /* ---------- cartões dos passos ---------- */
+  .step {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 20px;
-    margin-bottom: 18px;
-    box-shadow: 0 2px 10px rgba(31,39,51,0.05);
-  }
-
-  /* --- dropzone --- */
-  #dropzone {
-    border: 2px dashed #b9b2a2;
     border-radius: 12px;
-    padding: 34px 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color .15s, background .15s;
+    padding: 22px 22px 24px;
+    margin-bottom: 22px;
+    box-shadow: 0 2px 10px rgba(27,39,51,.05);
+    position: relative;
   }
-  #dropzone.drag { border-color: var(--accent); background: #eff4ff; }
-  #dropzone strong { color: var(--accent); }
-  #dropzone .hint { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
-  #fileInput { display: none; }
-  .samplebtn {
-    margin-top: 14px;
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-size: 0.85rem;
-    color: var(--muted);
-    cursor: pointer;
+  .stephead { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+  .selo {
+    font-family: var(--hand); font-weight: 700; font-size: 1.5rem; color: var(--blue);
+    width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--blue); border-radius: 50% 46% 52% 48% / 48% 52% 46% 52%;
+    transform: rotate(var(--rot, -4deg));
+    background: #fff;
   }
-  .samplebtn:hover { border-color: var(--accent); color: var(--accent); }
+  .steptitle { position: relative; display: inline-block; }
+  .steptitle h2 { font-family: var(--hand); font-weight: 700; font-size: 1.9rem; line-height: 1.05; }
+  .steptitle svg.u { position: absolute; left: 0; right: 0; bottom: -7px; width: 100%; height: 8px; overflow: visible; }
+  .steptitle svg.u path {
+    fill: none; stroke: var(--blue); stroke-width: 2.6; stroke-linecap: round;
+    stroke-dasharray: 100; stroke-dashoffset: 100;
+    animation: draw .7s ease-out forwards;
+  }
+  .s1 svg.u path { animation-delay: .25s; }
+  .s2 svg.u path { animation-delay: .55s; }
+  .s3 svg.u path { animation-delay: .85s; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .steptitle svg.u path { animation: none; stroke-dashoffset: 0; }
+    * { transition: none !important; animation-duration: 0.001s !important; }
+  }
+  .steplead { color: var(--muted); font-size: .93rem; margin: 4px 0 16px 58px; }
 
-  /* --- cenas da cartolina --- */
-  #sceneList { display: none; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+  /* ---------- passo 1: galeria de cenas ---------- */
+  .galleryrow { display: flex; gap: 18px; align-items: flex-start; margin-left: 58px; }
+  #gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; flex: 1; }
+  #gallery.empty { display: block; }
+  #sceneList { display: none; }
   .sceneitem {
-    position: relative; border: 1px solid var(--border); border-radius: 8px; padding: 6px; background: #fff;
-    cursor: grab; transition: box-shadow .1s, opacity .1s; touch-action: none;
+    position: relative; border: 1px solid var(--border); border-radius: 10px; background: #fff;
+    padding: 8px; cursor: grab; touch-action: none; align-self: start;
+    transition: box-shadow .12s, opacity .12s, transform .12s;
   }
+  .sceneitem:hover { box-shadow: 0 4px 14px rgba(27,39,51,.10); }
   .sceneitem:active { cursor: grabbing; }
   .sceneitem.dragging { opacity: 0.4; }
-  .sceneitem.drop-before { box-shadow: -3px 0 0 var(--accent); }
-  .sceneitem.drop-after { box-shadow: 3px 0 0 var(--accent); }
-  .sceneitem canvas { display: block; border-radius: 4px; pointer-events: none; }
+  .sceneitem.drop-before { box-shadow: -3px 0 0 var(--blue); }
+  .sceneitem.drop-after { box-shadow: 3px 0 0 var(--blue); }
+  .sceneitem .thumb { border: 1px solid #eef1f5; border-radius: 6px; overflow: hidden; }
+  .sceneitem .thumb canvas { display: block; width: 100%; height: auto; pointer-events: none; }
   .scenenum {
-    position: absolute; top: -10px; left: -10px; background: var(--accent); color: #fff;
-    border: none; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
-    width: 34px; padding: 3px 0; text-align: center; cursor: text;
-    -moz-appearance: textfield;
+    position: absolute; top: -12px; left: -10px; z-index: 2;
+    font-family: var(--hand); font-weight: 700; font-size: 1.1rem; color: #fff; text-align: center;
+    background: var(--blue); border: none; border-radius: 50% 46% 52% 48% / 48% 52% 46% 52%;
+    width: 32px; height: 32px; transform: rotate(-5deg); cursor: text;
+    box-shadow: 0 2px 5px rgba(27,39,51,.22);
+    -moz-appearance: textfield; appearance: textfield;
   }
   .scenenum::-webkit-outer-spin-button, .scenenum::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  .scenenum:focus { outline: 2px solid var(--accent-dark); }
-  .scenebtns { display: flex; gap: 4px; justify-content: center; margin-top: 5px; }
-  .scenebtns button {
-    border: 1px solid var(--border); background: #fff; border-radius: 6px;
-    cursor: pointer; font-size: 0.8rem; padding: 2px 7px;
+  .scenenum:focus { outline: 2px solid var(--blue-dark); }
+  .scenemeta { display: flex; align-items: center; gap: 5px; margin-top: 8px; font-size: .82rem; color: var(--muted); font-weight: 600; padding: 0 2px; }
+  .scenemeta.narrated { color: var(--blue); }
+  .scenemeta input {
+    width: 44px; padding: 1px 4px; border: 1px solid var(--border); border-radius: 6px;
+    font-family: var(--body); font-size: .82rem; text-align: right; color: var(--ink);
   }
-  .scenebtns button:hover { border-color: var(--accent); color: var(--accent); }
-  .scenedur { text-align: center; margin-top: 5px; font-size: 0.8rem; color: var(--muted); }
-  .scenedur input {
-    width: 46px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px;
-    font-size: 0.85rem; text-align: right; color: var(--ink);
+  .sceneacts { display: flex; gap: 6px; margin-top: 8px; }
+  .sceneacts button {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); background: #fff; border-radius: 7px; padding: 6px 0; color: var(--muted);
   }
+  .sceneacts button:hover { border-color: var(--blue); color: var(--blue); }
+  .sceneacts button.danger:hover { border-color: var(--red); color: var(--red); }
+  .sceneacts button.recording { background: var(--red); border-color: var(--red); color: #fff; }
+  #dropzone {
+    border: 2px dashed #b7c0cf; border-radius: 10px; background: transparent;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    min-height: 170px; color: var(--muted); text-align: center; padding: 16px; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  #gallery.empty #dropzone { min-height: 210px; padding: 30px 16px; }
+  #dropzone:hover, #dropzone.drag { border-color: var(--blue); background: #f3f7ff; }
+  #dropzone strong { font-size: .95rem; color: var(--ink); }
+  #dropzone.drag strong, #dropzone:hover strong { color: var(--blue); }
+  #dropzone .plus { width: 32px; height: 32px; stroke-width: 2.2; }
+  #fileInput { display: none; }
+  .samplebtn {
+    margin-top: 8px; background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 13px; font-size: .84rem; font-weight: 600; color: var(--muted); cursor: pointer;
+  }
+  .samplebtn:hover { border-color: var(--blue); color: var(--blue); }
 
-  /* --- controls --- */
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 18px 28px;
-    align-items: flex-end;
+  /* ---------- passo 2: estilo ---------- */
+  .stylebar {
+    margin-left: 58px; width: calc(100% - 58px);
+    display: flex; align-items: center; gap: 12px;
+    border: 1px solid var(--border); border-radius: 10px; background: #fbfcfe;
+    padding: 9px 14px; font-size: .92rem; text-align: left;
   }
-  .control { display: flex; flex-direction: column; gap: 6px; }
-  .control label { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-  .control select, .control input[type=range] { accent-color: var(--accent); }
-  .control select {
-    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
-    font-size: 0.9rem; background: #fff; color: var(--ink);
-  }
-  .control .val { font-size: 0.85rem; color: var(--ink); font-weight: 600; }
-  .toggle { display: flex; align-items: center; gap: 8px; padding-bottom: 4px; }
-  .toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
-  .toggle span { font-size: 0.9rem; }
+  .stylebar:hover { border-color: var(--blue); }
+  #handMiniBar { width: 36px; height: 36px; flex: none; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+  .stylebar .summary { flex: 1; color: var(--ink); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stylebar .cta { color: var(--blue); font-weight: 700; display: flex; align-items: center; gap: 4px; flex: none; }
+  .stylebar .chev { transition: transform .18s; }
+  .stylebar[aria-expanded="true"] .chev { transform: rotate(180deg); }
 
-  /* --- mão personalizada --- */
-  .handcustom { margin-top: 16px; font-size: 0.9rem; color: var(--muted); }
-  .handcustom summary { cursor: pointer; font-weight: 600; }
-  .handcustom .hint { margin: 10px 0; font-size: 0.85rem; line-height: 1.45; }
-  .handcustom input[type=file] { font-size: 0.85rem; }
-  #handPreviewWrap { max-height: 500px; overflow: auto; margin-top: 10px; }
+  .stylepanel { margin: 16px 0 0 58px; display: none; }
+  .stylepanel.open { display: block; }
+  .stylegrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px 22px; }
+  .field > label, .field > .flabel {
+    display: block; font-size: .76rem; font-weight: 800; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .05em; margin-bottom: 7px;
+  }
+  .chips { display: flex; gap: 6px; }
+  .chip {
+    border: 1px solid var(--border); background: #fff; border-radius: 8px;
+    padding: 7px 12px; font-size: .85rem; font-weight: 700; color: var(--muted);
+  }
+  .chip[aria-pressed="true"] { border-color: var(--blue); color: var(--blue); background: #eff4ff; }
+  select, .field input[type="number"] {
+    font-family: var(--body); font-size: .9rem; color: var(--ink);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; background: #fff;
+  }
+  .field input[type="number"] { width: 76px; }
+  .field .unit { font-size: .84rem; color: var(--muted); margin-left: 6px; }
+  .toggle { display: flex; align-items: center; gap: 7px; font-size: .88rem; cursor: pointer; }
+  .toggle input { width: 16px; height: 16px; accent-color: var(--blue); }
+  input[type="range"] { width: 100%; max-width: 300px; accent-color: var(--blue); }
+  .val { font-size: 0.85rem; color: var(--ink); font-weight: 600; }
+
+  .handfield { display: flex; align-items: flex-start; gap: 12px; }
+  #handMiniField { width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 9px; background: #fff; flex: none; }
+  #handName { font-size: .9rem; font-weight: 700; margin-bottom: 4px; }
+  .linkbtn { background: none; border: none; color: var(--blue); font-weight: 700; font-size: .88rem; padding: 4px 0; text-decoration: underline; text-underline-offset: 3px; }
+  .linkbtn:hover { color: var(--blue-dark); }
+
+  details.advanced { margin-top: 20px; border-top: 1px dashed var(--border); padding-top: 12px; }
+  details.advanced summary { font-size: .86rem; font-weight: 700; color: var(--muted); cursor: pointer; width: fit-content; }
+  details.advanced .field { margin-top: 12px; max-width: 340px; }
+
+  /* ---------- assistente da mão ---------- */
+  #handWizard {
+    display: none; margin-top: 18px; border: 1px solid var(--border); border-radius: 10px;
+    background: #fbfcfe; padding: 16px;
+  }
+  .wizsteps { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .wizstep {
+    display: flex; align-items: center; gap: 8px; border: 1px solid var(--border);
+    background: #fff; border-radius: 999px; padding: 5px 14px 5px 5px; font-size: .84rem; font-weight: 700; color: var(--muted);
+  }
+  .wizstep .n {
+    font-family: var(--hand); font-weight: 700; width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: .95rem;
+    background: #eef1f5; color: var(--muted);
+  }
+  .wizstep.on { border-color: var(--blue); color: var(--blue); background: #eff4ff; }
+  .wizstep.on .n { background: var(--blue); color: #fff; }
+  .wizstep.done .n { background: var(--green); color: #fff; }
+  .wizuploadrow { margin-bottom: 4px; }
+  .wizuploadrow .hint { margin-bottom: 10px; }
+  .filebtn {
+    display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); background: #fff;
+    border-radius: 8px; padding: 8px 13px; font-size: .86rem; font-weight: 600; color: var(--ink);
+    cursor: pointer; margin: 0 8px 8px 0;
+  }
+  .filebtn:hover { border-color: var(--blue); color: var(--blue); }
+  .wizbody { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  #handPreviewWrap { flex: 1; min-width: 240px; max-height: 500px; overflow: auto; }
   #handPreview {
-    display: none;
+    display: none; max-width: 100%;
     border: 1px solid var(--border); border-radius: 8px; cursor: crosshair;
-    background: repeating-conic-gradient(#f3f3f3 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;
+    background: repeating-conic-gradient(#f1f3f6 0% 25%, #fff 0% 50%) 0 0 / 18px 18px;
     touch-action: none;
   }
-  #handTipStatus { margin-top: 6px; font-size: 0.85rem; }
+  .wiztools { width: 230px; flex: none; display: flex; flex-direction: column; gap: 8px; }
+  .wizpanel { display: none; flex-direction: column; gap: 8px; }
+  .wizshared { display: flex; flex-direction: column; gap: 8px; }
+  .toolbtn {
+    display: flex; align-items: center; gap: 9px; border: 1px solid var(--border); background: #fff;
+    border-radius: 8px; padding: 8px 12px; font-size: .86rem; font-weight: 600; color: var(--ink); text-align: left;
+  }
+  .toolbtn:hover { border-color: var(--blue); color: var(--blue); }
+  .toolbtn.primaryish { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 700; }
+  .toolbtn.primaryish:hover { background: var(--blue-dark); color: #fff; }
+  .toolbtn.green { background: var(--green); border-color: var(--green); color: #fff; font-weight: 700; }
+  .toolbtn.green:hover { background: var(--green-dark); color: #fff; }
+  .segmented { display: flex; gap: 6px; }
+  .segmented button {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+    border: 1px solid var(--border); background: #fff; border-radius: 8px;
+    padding: 8px 6px; font-size: .85rem; font-weight: 700; color: var(--muted);
+  }
+  .segmented button[aria-pressed="true"] { border-color: var(--blue); color: var(--blue); background: #eff4ff; }
+  .minirow { display: flex; align-items: center; gap: 8px; font-size: .84rem; color: var(--muted); }
+  .minirow select { padding: 5px 8px; font-size: .84rem; }
+  #handTipStatus {
+    margin-top: 12px; font-family: var(--hand); font-weight: 600; font-size: 1.08rem; line-height: 1.3;
+    color: var(--postit-ink); background: var(--postit); border-radius: 2px;
+    padding: 10px 14px; max-width: 560px; transform: rotate(-0.8deg);
+    box-shadow: 2px 3px 7px rgba(27,39,51,.13);
+  }
+  #handTipStatus:empty { display: none; }
 
-  /* --- editor da cartolina --- */
+  /* ---------- passo 3: palco e vídeo ---------- */
+  .stagewrap { margin-left: 58px; position: relative; }
+  #stagePlaceholder {
+    border: 1px solid var(--border); border-radius: 10px; background: #fff;
+    min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    color: var(--muted); font-size: .92rem; text-align: center; padding: 20px;
+  }
+  #stage {
+    display: none; position: relative; background: #fff;
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    justify-content: center;
+  }
+  #canvas { max-width: 100%; height: auto; display: block; }
+  .stagechip {
+    position: absolute; top: 10px; right: 10px; z-index: 2;
+    border: 1px solid var(--border); background: rgba(255,255,255,.93); border-radius: 8px;
+    padding: 6px 11px; font-size: .82rem; font-weight: 700; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .stagechip:hover { border-color: var(--blue); color: var(--blue); }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 16px; margin: 20px 0 0 58px; align-items: center; }
+  #renderBtn {
+    background: var(--red); color: #fff; border: none; border-radius: 12px;
+    font-size: 1.15rem; font-weight: 800; padding: 14px 30px;
+    transform: rotate(-0.6deg);
+    box-shadow: 0 4px 14px rgba(225,29,72,.35);
+    display: flex; align-items: center; gap: 10px;
+    transition: transform .12s, box-shadow .12s, background .12s;
+  }
+  #renderBtn .ic { width: 20px; height: 20px; }
+  #renderBtn:hover:not(:disabled) { background: var(--red-dark); transform: rotate(-0.6deg) translateY(-1px); box-shadow: 0 6px 18px rgba(225,29,72,.4); }
+  #previewBtn {
+    background: #fff; color: var(--ink); border: 1px solid var(--border); border-radius: 10px;
+    font-size: .95rem; font-weight: 700; padding: 12px 20px; display: flex; align-items: center; gap: 8px;
+  }
+  #previewBtn:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+  .actions .postit { margin-left: auto; }
+
+  button.primary, button.secondary {
+    border: none; border-radius: 10px; padding: 11px 20px;
+    font-size: 0.92rem; font-weight: 700; cursor: pointer;
+    transition: transform .05s, background .15s;
+  }
+  button.primary { background: var(--blue); color: #fff; }
+  button.primary:hover { background: var(--blue-dark); }
+  button.secondary { background: #fff; color: var(--ink); border: 1px solid var(--border); }
+  button.secondary:hover { border-color: var(--blue); color: var(--blue); }
+  button:active { transform: scale(0.98); }
+
+  #status {
+    display: none; margin: 16px 0 0 58px;
+    font-family: var(--hand); font-weight: 600; font-size: 1.12rem; line-height: 1.3;
+    color: var(--postit-ink); background: var(--postit); border-radius: 2px;
+    padding: 10px 14px; max-width: 620px; transform: rotate(-0.7deg);
+    box-shadow: 2px 3px 7px rgba(27,39,51,.13);
+  }
+  #status.show { display: block; }
+  #status.err { background: #ffe4e6; color: #9f1239; }
+
+  #progressbar { display: none; margin: 18px 0 0 58px; }
+  #progressbar .phase { font-family: var(--hand); font-weight: 600; font-size: 1.25rem; color: var(--ink); margin-bottom: 8px; min-height: 1.3em; }
+  #progressbar .bar { height: 12px; border: 1px solid var(--border); border-radius: 999px; background: #fff; overflow: hidden; }
+  #progressbar .fill { height: 100%; width: 0%; background: var(--red); border-radius: 999px; transition: width .2s linear; }
+
+  #resultCard { display: none; margin-left: 58px; }
+  #resultVideo { width: 100%; border-radius: 10px; border: 1px solid var(--border); background: #10151c; display: block; }
+  .resultacts { display: flex; gap: 14px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+  #downloadLink {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--green); color: #fff; text-decoration: none;
+    padding: 13px 24px; border-radius: 12px; font-weight: 800; font-size: 1.02rem;
+    box-shadow: 0 4px 12px rgba(22,163,74,.3);
+  }
+  #downloadLink:hover { background: var(--green-dark); }
+  #backBtn { background: none; border: none; color: var(--muted); font-weight: 700; font-size: .92rem; text-decoration: underline; text-underline-offset: 3px; }
+  #backBtn:hover { color: var(--ink); }
+  .formatnote { font-size: 0.8rem; color: var(--muted); margin-top: 10px; }
+
+  /* ---------- editor da cartolina ---------- */
   #layoutBoard {
     position: relative; width: 100%; background: #fff;
     border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
   }
   .layItem {
-    position: absolute; border: 1.5px dashed var(--accent); border-radius: 4px;
+    position: absolute; border: 1.5px dashed var(--blue); border-radius: 4px;
     cursor: grab; touch-action: none; box-sizing: border-box;
   }
   .layItem:active { cursor: grabbing; }
   .layItem canvas { display: block; width: 100%; height: 100%; pointer-events: none; }
   .layNum {
-    position: absolute; top: -10px; left: -10px; background: var(--accent); color: #fff;
-    border-radius: 999px; font-size: 0.72rem; font-weight: 700; padding: 1px 7px; pointer-events: none;
+    position: absolute; top: -12px; left: -10px; background: var(--blue); color: #fff;
+    font-family: var(--hand); font-weight: 700;
+    border-radius: 50% 46% 52% 48% / 48% 52% 46% 52%; font-size: 0.85rem;
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    transform: rotate(-5deg); pointer-events: none;
   }
   .layHandle {
     position: absolute; right: -8px; bottom: -8px; width: 18px; height: 18px;
-    background: var(--accent); border: 2px solid #fff; border-radius: 5px; cursor: nwse-resize;
+    background: var(--blue); border: 2px solid #fff; border-radius: 5px; cursor: nwse-resize;
   }
 
-  /* --- stage --- */
-  #stageCard { display: none; }
-  #stage {
-    position: relative;
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    display: flex;
-    justify-content: center;
-  }
-  #canvas { max-width: 100%; height: auto; display: block; }
+  footer { text-align: center; color: var(--muted); font-size: .82rem; margin-top: 36px; }
+  footer .hand { font-family: var(--hand); font-size: 1.05rem; }
 
-  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; align-items: center; }
-  button.primary, button.secondary {
-    border: none; border-radius: 10px; padding: 12px 22px;
-    font-size: 0.95rem; font-weight: 600; cursor: pointer;
-    transition: transform .05s, background .15s;
+  /* ---------- celular ---------- */
+  @media (max-width: 640px) {
+    body { padding: 16px 10px 50px; }
+    header { flex-wrap: wrap; }
+    header h1 { font-size: 1.8rem; }
+    .step { padding: 16px 14px 18px; }
+    .steplead, .galleryrow, .stylebar, .stylepanel, .stagewrap, .actions, #progressbar, #resultCard, #status { margin-left: 0; }
+    .stylebar { width: 100%; }
+    .stylebar .summary { white-space: normal; }
+    .galleryrow { flex-direction: column; }
+    .galleryrow .postit { order: -1; align-self: flex-end; }
+    #gallery { grid-template-columns: repeat(2, 1fr); width: 100%; }
+    .actions .postit { margin-left: 0; }
+    #renderBtn, #previewBtn { width: 100%; justify-content: center; }
+    .wiztools { width: 100%; }
   }
-  button.primary { background: var(--accent); color: #fff; }
-  button.primary:hover { background: var(--accent-dark); }
-  button.secondary { background: #eef1f6; color: var(--ink); }
-  button.secondary:hover { background: #e2e7ef; }
-  button:disabled { opacity: 0.45; cursor: not-allowed; }
-  button:active { transform: scale(0.98); }
-
-  #status { font-size: 0.9rem; color: var(--muted); min-height: 1.2em; margin-top: 12px; }
-  #status.err { color: var(--red); }
-
-  .progressbar {
-    height: 8px; background: #edeae1; border-radius: 999px; overflow: hidden;
-    margin-top: 10px; display: none;
-  }
-  .progressbar .fill { height: 100%; width: 0%; background: var(--accent); transition: width .2s linear; }
-
-  /* --- result --- */
-  #resultCard { display: none; }
-  #resultCard h2 { font-size: 1.1rem; margin-bottom: 12px; }
-  #resultVideo { width: 100%; border-radius: 10px; border: 1px solid var(--border); background: #000; }
-  #downloadLink {
-    display: inline-block; margin-top: 14px;
-    background: #16a34a; color: #fff; text-decoration: none;
-    padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 0.95rem;
-  }
-  #downloadLink:hover { background: #15803d; }
-  .formatnote { font-size: 0.8rem; color: var(--muted); margin-top: 10px; }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M4 20h9M6.5 17.5L17 7a2.1 2.1 0 0 0-3-3L3.5 14.5 3 18z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M15 4l5 5L8 21H3v-5zM13 6l5 5"/></symbol>
+  <symbol id="i-wand" viewBox="0 0 24 24"><path d="M4 20L14 10"/><path d="M17 3l.9 2.6L20.5 6.5l-2.6.9L17 10l-.9-2.6L13.5 6.5l2.6-.9zM20 12l.6 1.7 1.7.6-1.7.6L20 16.6l-.6-1.7-1.7-.6 1.7-.6z"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.6"/><circle cx="18" cy="8" r="1.6"/><circle cx="9" cy="17" r="1.6"/><path d="M14 14l6 6"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M12 8v7M9 12l3 3 3-3"/></symbol>
+  <symbol id="i-rec" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/></symbol>
+</svg>
+
 <div class="wrap">
   <header>
-    <h1><span class="pen">✍️</span> Quadro Mágico</h1>
-    <p>Envie uma imagem estilo quadro branco e receba um vídeo dela sendo desenhada.</p>
-    <button id="installBtn" style="display:none">📲 Instalar como app</button>
-    <div id="iosInstallTip" style="display:none">Para instalar: toque em <strong>Compartilhar</strong> ⬆️ e depois em <strong>“Adicionar à Tela de Início”</strong>.</div>
+    <img class="logo" src="icon.svg" alt="">
+    <div class="titles">
+      <h1>Quadro Mágico</h1>
+      <div class="tagline">suas ideias, desenhadas e narradas</div>
+    </div>
+    <button id="installBtn" style="display:none">Instalar app</button>
   </header>
+  <div id="iosInstallTip" style="display:none">Para instalar: toque em <strong>Compartilhar</strong> ⬆️ e depois em <strong>“Adicionar à Tela de Início”</strong>.</div>
 
-  <div class="card">
-    <div id="dropzone">
-      <div>Arraste <strong>uma ou várias imagens</strong> aqui ou <strong>clique para escolher</strong></div>
-      <div class="hint">Funciona melhor com desenhos de traço sobre fundo branco (PNG ou JPG).<br>Com 2+ imagens vira o <strong>modo cartolina</strong>: a câmera desenha uma cena de cada vez e dá zoom out no final.</div>
-      <button class="samplebtn" id="sampleBtn">✨ Testar com um desenho de exemplo</button>
+  <!-- ============ PASSO 1: SUAS CENAS ============ -->
+  <section class="step">
+    <div class="stephead">
+      <span class="selo" style="--rot:-4deg">1</span>
+      <span class="steptitle s1">
+        <h2>Suas cenas</h2>
+        <svg class="u" viewBox="0 0 120 8" preserveAspectRatio="none" aria-hidden="true"><path pathLength="100" d="M2 5 Q 30 1.5 60 5 T 118 3.5"/></svg>
+      </span>
+    </div>
+    <p class="steplead">Envie desenhos de traço sobre fundo claro — cada imagem vira uma cena, desenhada na ordem dos números. Com 2+ imagens vira o modo cartolina.</p>
+    <div class="galleryrow">
+      <div id="gallery" class="empty">
+        <div id="sceneList"></div>
+        <div id="dropzone">
+          <svg class="ic plus" aria-hidden="true"><use href="#i-plus"/></svg>
+          <strong>Arraste imagens aqui</strong>
+          <span class="hint">ou clique pra escolher (PNG ou JPG)</span>
+          <button class="samplebtn" id="sampleBtn">✨ Testar com um desenho de exemplo</button>
+        </div>
+      </div>
+      <div class="postit" id="sceneHint" style="display:none">Arraste um cartão pra trocar a ordem; o microfone grava a narração — a cena dura o tempo da fala 🎙</div>
     </div>
     <input type="file" id="fileInput" accept="image/*" multiple>
-    <div class="hint" id="sceneHint" style="display:none">Ordem de desenho na cartolina — <strong>arraste</strong> as miniaturas pra reordenar ou <strong>digite o número</strong> no selo azul; ✕ remove; ⏱ define os segundos de cada cena; <strong>🎤 grava sua narração</strong> (desenho + pausa duram exatamente o tempo da fala, e a voz sai no vídeo final):</div>
-    <div id="sceneList"></div>
-  </div>
+  </section>
 
-  <div class="card">
-    <div class="controls">
-      <div class="control">
-        <label for="duration">Duração do desenho</label>
-        <input type="range" id="duration" min="3" max="45" value="10" step="1">
-        <span class="val" id="durationVal">10 segundos</span>
-      </div>
-      <div class="control">
-        <label for="format">Formato do vídeo</label>
-        <select id="format">
-          <option value="1280x720">Paisagem 16:9 (YouTube)</option>
-          <option value="720x1280">Vertical 9:16 (Reels / Stories)</option>
-          <option value="1080x1080">Quadrado 1:1 (Feed)</option>
-        </select>
-      </div>
-      <div class="control">
-        <label for="order">Ordem do desenho</label>
-        <select id="order">
-          <option value="cima">De cima pra baixo</option>
-          <option value="baixo">De baixo pra cima</option>
-          <option value="esq">Da esquerda pra direita</option>
-          <option value="dir">Da direita pra esquerda</option>
-          <option value="texto-fim">Desenho primeiro, texto no fim</option>
-          <option value="texto-ini">Texto primeiro, desenho depois</option>
-        </select>
-      </div>
-      <div class="control">
-        <label for="scenePause">Pausa após cada cena</label>
-        <input type="range" id="scenePause" min="0" max="5" value="1" step="0.5">
-        <span class="val" id="scenePauseVal">1 s</span>
-      </div>
-      <div class="control">
-        <label for="sensitivity">Sensibilidade do traço</label>
-        <input type="range" id="sensitivity" min="30" max="160" value="70" step="5">
-        <span class="val" id="sensitivityVal">normal</span>
-      </div>
-      <div class="control toggle">
-        <input type="checkbox" id="showHand" checked>
-        <span>Mostrar a mão desenhando</span>
-      </div>
+  <!-- ============ PASSO 2: ESTILO ============ -->
+  <section class="step">
+    <div class="stephead">
+      <span class="selo" style="--rot:3deg">2</span>
+      <span class="steptitle s2">
+        <h2>Estilo</h2>
+        <svg class="u" viewBox="0 0 120 8" preserveAspectRatio="none" aria-hidden="true"><path pathLength="100" d="M2 4.5 Q 30 6.5 60 4 T 118 5"/></svg>
+      </span>
     </div>
-    <details class="handcustom">
-      <summary>🖐️ Usar uma foto de mão personalizada (opcional)</summary>
-      <p class="hint">Envie uma foto da sua mão segurando a caneta. Depois são só dois passos na miniatura: <strong>1)</strong> clique no fundo da foto pra eu apagar (pode clicar mais de uma vez, em cada área de fundo); <strong>2)</strong> clique na ponta da caneta. Se a foto já tiver fundo transparente (PNG), pulamos direto pro passo 2.</p>
-      <input type="file" id="handFile" accept="image/*">
-      <div class="hint" id="handToolsRow" style="display:none">
-        Ferramenta:
-        <select id="handTool">
-          <option value="clique">🪄 Varinha (clique no fundo, apaga a área inteira)</option>
-          <option value="borracha">🧽 Borracha (arraste pra apagar na mão)</option>
-        </select>
-        <span id="brushSizeWrap" style="display:none">espessura:
-          <select id="brushSize">
-            <option value="6">fina</option>
-            <option value="16" selected>média</option>
-            <option value="34">grossa</option>
+
+    <button class="stylebar" id="styleToggle" aria-expanded="false" aria-controls="stylePanel">
+      <canvas id="handMiniBar" width="72" height="72" aria-hidden="true"></canvas>
+      <span class="summary" id="styleSummary"></span>
+      <span class="cta">Ajustar <svg class="ic chev" aria-hidden="true"><use href="#i-chev"/></svg></span>
+    </button>
+
+    <div class="stylepanel" id="stylePanel">
+      <div class="stylegrid">
+        <div class="field">
+          <span class="flabel">Formato do vídeo</span>
+          <div class="chips" role="group" aria-label="Formato do vídeo">
+            <button class="chip" data-format="1280x720" aria-pressed="true">16:9</button>
+            <button class="chip" data-format="720x1280" aria-pressed="false">9:16</button>
+            <button class="chip" data-format="1080x1080" aria-pressed="false">1:1</button>
+          </div>
+          <select id="format" hidden>
+            <option value="1280x720">Paisagem 16:9 (YouTube)</option>
+            <option value="720x1280">Vertical 9:16 (Reels / Stories)</option>
+            <option value="1080x1080">Quadrado 1:1 (Feed)</option>
           </select>
-        </span>
-        <label style="white-space:nowrap"><input type="checkbox" id="handZoom"> 🔍 ampliar 2×</label>
+        </div>
+        <div class="field">
+          <label for="order">Ordem do desenho</label>
+          <select id="order">
+            <option value="cima">De cima pra baixo</option>
+            <option value="baixo">De baixo pra cima</option>
+            <option value="esq">Da esquerda pra direita</option>
+            <option value="dir">Da direita pra esquerda</option>
+            <option value="texto-fim">Desenho primeiro, texto no fim</option>
+            <option value="texto-ini">Texto primeiro, desenho depois</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="scenePause">Pausa entre cenas</label>
+          <input type="number" id="scenePause" min="0" max="5" value="1" step="0.5"><span class="unit">segundos</span>
+        </div>
+        <div class="field">
+          <label for="duration">Duração padrão da cena</label>
+          <input type="number" id="duration" min="3" max="45" value="10" step="1"><span class="unit">segundos, sem narração</span>
+        </div>
+        <div class="field">
+          <span class="flabel">Mão que desenha</span>
+          <div class="handfield">
+            <canvas id="handMiniField" width="128" height="128" aria-hidden="true"></canvas>
+            <div>
+              <div id="handName">Ilustrada padrão</div>
+              <label class="toggle"><input type="checkbox" id="showHand" checked> <span>mostrar a mão no vídeo</span></label>
+              <button class="linkbtn" id="handCustomize" type="button">Personalizar mão</button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div id="handPreviewWrap"><canvas id="handPreview"></canvas></div>
-      <div class="hint" id="handTipStatus"></div>
-      <button class="samplebtn" id="handDespeckle" style="display:none">🧹 Limpar pontinhos soltos</button>
-      <div class="hint" id="handStrengthRow" style="display:none">Força do apagador:
-        <select id="handStrength">
-          <option value="suave">suave</option>
-          <option value="normal" selected>normal</option>
-          <option value="forte">forte</option>
-        </select>
-        <span style="opacity:.8">— se ele comer um pedaço da mão, desfaz e usa o suave</span>
+
+      <div id="handWizard">
+        <div class="wizsteps" aria-hidden="true">
+          <span class="wizstep" data-step="1"><span class="n">1</span> Recorte o fundo</span>
+          <span class="wizstep" data-step="2"><span class="n">2</span> Marque a ponta</span>
+          <span class="wizstep" data-step="3"><span class="n">3</span> Salve e baixe</span>
+        </div>
+        <div class="wizuploadrow" id="handUploadRow">
+          <p class="hint">Envie uma foto da <strong>sua mão segurando a caneta</strong> (de preferência com o braço saindo pela borda da foto). Eu te guio no recorte do fundo e na marcação da ponta.</p>
+          <label class="filebtn">📷 Escolher foto da mão<input type="file" id="handFile" accept="image/*" hidden></label>
+          <label class="filebtn">📂 Carregar mão de um arquivo<input type="file" id="handLoadFile" accept=".json,application/json" hidden></label>
+        </div>
+        <div class="wizbody">
+          <div id="handPreviewWrap"><canvas id="handPreview"></canvas></div>
+          <div class="wiztools">
+            <div class="wizpanel" id="wizPanel1">
+              <div class="segmented" id="handToolBtns">
+                <button type="button" data-tool="clique" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg> Varinha</button>
+                <button type="button" data-tool="borracha" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-eraser"/></svg> Borracha</button>
+              </div>
+              <select id="handTool" hidden>
+                <option value="clique">Varinha</option>
+                <option value="borracha">Borracha</option>
+              </select>
+              <div class="minirow" id="handStrengthRow">Força:
+                <select id="handStrength">
+                  <option value="suave">suave</option>
+                  <option value="normal" selected>normal</option>
+                  <option value="forte">forte</option>
+                </select>
+              </div>
+              <div class="minirow" id="brushSizeWrap">Espessura:
+                <select id="brushSize">
+                  <option value="6">fina</option>
+                  <option value="16" selected>média</option>
+                  <option value="34">grossa</option>
+                </select>
+              </div>
+              <button class="toolbtn" id="handDespeckle"><svg class="ic" aria-hidden="true"><use href="#i-dots"/></svg> Limpar pontinhos soltos</button>
+              <button class="toolbtn" id="handUndo"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> Desfazer</button>
+              <button class="toolbtn primaryish" id="handBgDone"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Fundo pronto → marcar a ponta</button>
+            </div>
+            <div class="wizpanel" id="wizPanel2">
+              <p class="hint">Clique exatamente na <strong>ponta da caneta</strong> — é dali que o traço vai sair no vídeo.</p>
+            </div>
+            <div class="wizpanel" id="wizPanel3">
+              <button class="toolbtn green" id="handBake"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg> Baixar o app com a minha mão embutida</button>
+              <button class="toolbtn" id="handDownload"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Baixar arquivo da mão</button>
+              <button class="toolbtn" id="handReset"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> Voltar pra mão ilustrada padrão</button>
+              <p class="hint">O navegador às vezes esquece a mão salva — <strong>baixar o app com ela embutida</strong> é o jeito à prova de tudo: um arquivo só, que roda até offline.</p>
+            </div>
+            <div class="wizshared">
+              <label class="toggle" id="handZoomRow" style="display:none"><input type="checkbox" id="handZoom"> <span>🔍 ampliar 2×</span></label>
+              <button class="toolbtn" id="handRestart" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> Recomeçar recorte</button>
+            </div>
+          </div>
+        </div>
+        <div id="handTipStatus"></div>
       </div>
-      <button class="samplebtn" id="handUndo" style="display:none">↩️ Desfazer último clique</button>
-      <button class="samplebtn" id="handBgDone" style="display:none">✅ Fundo pronto → marcar a ponta</button>
-      <button class="samplebtn" id="handRestart" style="display:none">🔄 Recomeçar recorte</button>
-      <button class="samplebtn" id="handReset">Voltar pra mão padrão</button>
-      <div class="hint" style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px">
-        <strong>Guardar pra sempre:</strong> o navegador às vezes apaga a mão salva. A forma mais prática é <strong>baixar o app com a sua mão já embutida</strong> — vira um arquivo só, que você abre com 2 cliques (roda até offline) e a mão já vem pronta, sem procurar nada.
-      </div>
-      <button class="samplebtn" id="handBake" style="display:none">📥 Baixar o app com a minha mão embutida</button>
-      <details style="margin-top:8px">
-        <summary class="hint" style="cursor:pointer">Prefere guardar só a mão num arquivo separado?</summary>
-        <div style="margin-top:8px">
-          <button class="samplebtn" id="handDownload" style="display:none">💾 Baixar arquivo da minha mão</button>
-          <label class="samplebtn" style="cursor:pointer">📂 Carregar mão de um arquivo
-            <input type="file" id="handLoadFile" accept=".json,application/json" style="display:none">
-          </label>
+
+      <details class="advanced">
+        <summary>Avançado</summary>
+        <div class="field">
+          <label for="sensitivity">Sensibilidade do traço</label>
+          <input type="range" id="sensitivity" min="30" max="160" value="70" step="5">
+          <div><span class="val" id="sensitivityVal">normal</span></div>
+          <p class="hint">Aumente se partes do desenho estiverem sumindo; diminua se o fundo estiver virando traço.</p>
         </div>
       </details>
-    </details>
-  </div>
-
-  <div class="card" id="stageCard">
-    <div id="stage"><canvas id="canvas"></canvas></div>
-    <div class="actions">
-      <button class="secondary" id="previewBtn">▶ Ver prévia</button>
-      <button class="primary" id="renderBtn">🎬 Gerar vídeo</button>
-      <button class="secondary" id="layoutBtn" style="display:none">🖼️ Editar cartolina</button>
     </div>
-    <div class="progressbar" id="progressbar"><div class="fill" id="progressfill"></div></div>
-    <div id="status"></div>
-  </div>
+  </section>
 
-  <div class="card" id="layoutCard" style="display:none">
-    <h2 style="font-size:1.05rem; margin-bottom:6px">🖼️ Cartolina final</h2>
-    <p class="hint" style="color:var(--muted); font-size:0.85rem; margin-bottom:10px">Arraste cada desenho pra onde quiser e puxe o quadradinho azul do canto pra mudar o tamanho. O vídeo desenha cada um no lugar (com a câmera fechada) e o zoom out final revela essa composição.</p>
+  <!-- ============ PASSO 3: SEU VÍDEO ============ -->
+  <section class="step" id="stageCard">
+    <div class="stephead">
+      <span class="selo" style="--rot:-5deg">3</span>
+      <span class="steptitle s3">
+        <h2>Seu vídeo</h2>
+        <svg class="u" viewBox="0 0 120 8" preserveAspectRatio="none" aria-hidden="true"><path pathLength="100" d="M2 5 Q 40 2 70 5.5 T 118 4"/></svg>
+      </span>
+    </div>
+    <div id="stageMain">
+      <div class="stagewrap">
+        <div id="stagePlaceholder">
+          <svg class="ic" style="width:30px;height:30px" aria-hidden="true"><use href="#i-play"/></svg>
+          <span>A prévia aparece aqui — envie suas cenas no passo 1.</span>
+        </div>
+        <div id="stage">
+          <canvas id="canvas"></canvas>
+          <button class="stagechip" id="layoutBtn" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg> Editar cartolina</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="renderBtn" disabled><svg class="ic" aria-hidden="true"><use href="#i-rec"/></svg> Gerar vídeo</button>
+        <button id="previewBtn" disabled><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Prévia</button>
+        <div class="postit" style="--rot:-2.5deg">O vídeo sai em MP4, prontinho pra WhatsApp, Instagram e YouTube 🎬</div>
+      </div>
+      <div id="progressbar">
+        <div class="phase" id="phaseLabel"></div>
+        <div class="bar"><div class="fill" id="progressfill"></div></div>
+      </div>
+    </div>
+    <div id="resultCard">
+      <video id="resultVideo" controls></video>
+      <div class="resultacts">
+        <a id="downloadLink" download><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Baixar vídeo</a>
+        <button id="backBtn" type="button">Voltar a editar</button>
+      </div>
+      <div class="formatnote" id="formatNote"></div>
+    </div>
+    <div id="status"></div>
+  </section>
+
+  <!-- editor da cartolina (aparece só quando pedido) -->
+  <section class="step" id="layoutCard" style="display:none">
+    <div class="stephead">
+      <span class="selo" style="--rot:2deg">✎</span>
+      <span class="steptitle">
+        <h2>Cartolina final</h2>
+      </span>
+    </div>
+    <p class="steplead">Arraste cada desenho pra onde quiser e puxe o quadradinho azul do canto pra mudar o tamanho. O vídeo desenha cada um no lugar, e o zoom out final revela essa composição.</p>
     <div id="layoutBoard"></div>
-    <div class="actions">
+    <div class="actions" style="margin-left:0">
       <button class="secondary" id="layoutReset">↺ Redistribuir automaticamente</button>
       <button class="primary" id="layoutDone">✅ Pronto</button>
     </div>
-  </div>
+  </section>
 
-  <div class="card" id="resultCard">
-    <h2>🎉 Seu vídeo está pronto</h2>
-    <video id="resultVideo" controls></video>
-    <br>
-    <a id="downloadLink" download>⬇️ Baixar vídeo</a>
-    <div class="formatnote" id="formatNote"></div>
-  </div>
+  <footer><span class="hand">Quadro Mágico</span> — suas ideias, desenhadas e narradas.</footer>
 </div>
 
 <script>
@@ -462,9 +769,14 @@ function loadFiles(files) {
 
 function scenesChanged() {
   renderSceneList();
-  if (!sceneImages.length) { el('stageCard').style.display = 'none'; return; }
-  el('stageCard').style.display = 'block';
+  const has = sceneImages.length > 0;
+  el('stagePlaceholder').style.display = has ? 'none' : 'flex';
+  el('stage').style.display = has ? 'flex' : 'none';
+  el('renderBtn').disabled = !has;
+  el('previewBtn').disabled = !has;
   el('resultCard').style.display = 'none';
+  el('stageMain').style.display = 'block';
+  if (!has) { el('layoutBtn').style.display = 'none'; setStatus(''); return; }
   prepare();
   el('stageCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -481,18 +793,30 @@ function renderSceneList() {
   const box = el('sceneList');
   box.innerHTML = '';
   const show = sceneImages.length > 0;
-  box.style.display = show ? 'flex' : 'none';
+  box.style.display = show ? 'contents' : 'none';
+  el('gallery').classList.toggle('empty', !show);
   el('sceneHint').style.display = show ? 'block' : 'none';
+  // botãozinho de ícone (os desenhos ficam nos <symbol> no topo da página)
+  const mkBtn = (icon, title, cls) => {
+    const b = document.createElement('button');
+    b.title = title;
+    if (cls) b.className = cls;
+    b.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-' + icon + '"/></svg>';
+    return b;
+  };
   sceneImages.forEach((entry, i) => {
     const img = entry.img;
     const item = document.createElement('div');
     item.className = 'sceneitem';
+    const thumbWrap = document.createElement('div');
+    thumbWrap.className = 'thumb';
     const th = document.createElement('canvas');
-    th.width = 96; th.height = 68;
+    th.width = 240; th.height = 170;
     const g = th.getContext('2d');
-    g.fillStyle = '#fff'; g.fillRect(0, 0, 96, 68);
-    const sc = Math.min(96 / img.width, 68 / img.height);
-    g.drawImage(img, (96 - img.width * sc) / 2, (68 - img.height * sc) / 2, img.width * sc, img.height * sc);
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 240, 170);
+    const sc = Math.min(240 / img.width, 170 / img.height);
+    g.drawImage(img, (240 - img.width * sc) / 2, (170 - img.height * sc) / 2, img.width * sc, img.height * sc);
+    thumbWrap.appendChild(th);
     // selo com o número da ordem — dá pra DIGITAR a posição desejada
     const num = document.createElement('input');
     num.className = 'scenenum';
@@ -506,17 +830,11 @@ function renderSceneList() {
       moveScene(i, target);
     });
     num.addEventListener('keydown', e => { if (e.key === 'Enter') num.blur(); });
-    const btns = document.createElement('div');
-    btns.className = 'scenebtns';
-    const rm = document.createElement('button');
-    rm.textContent = '✕ remover'; rm.title = 'remover esta cena';
-    rm.addEventListener('click', () => { sceneImages.splice(i, 1); scenesChanged(); });
-    btns.appendChild(rm);
 
     // arrastar pra reordenar (pointer events: funciona no mouse e no toque)
     item.dataset.idx = i;
     item.addEventListener('pointerdown', e => {
-      if (e.target.closest('.scenenum, .scenedur, button')) return; // deixa os campos/botões funcionar
+      if (e.target.closest('.scenenum, .scenemeta, button')) return; // deixa os campos/botões funcionar
       e.preventDefault();
       dragFrom = i;
       dragStartX = e.clientX; dragStartY = e.clientY;
@@ -561,12 +879,16 @@ function renderSceneList() {
     };
     item.addEventListener('pointerup', finishDrag);
     item.addEventListener('pointercancel', finishDrag);
-    const durRow = document.createElement('div');
-    durRow.className = 'scenedur';
+
+    // tempo da cena: narração manda; sem narração, campo de segundos
+    const meta = document.createElement('div');
+    meta.className = 'scenemeta' + (entry.audio ? ' narrated' : '');
     if (entry.audio) {
-      durRow.textContent = '🎙 ' + entry.audio.duration.toFixed(1) + 's (fala)';
-      durRow.title = 'a duração desta cena segue a narração gravada';
+      meta.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg>';
+      meta.appendChild(document.createTextNode(entry.audio.duration.toFixed(1).replace('.', ',') + 's narrado'));
+      meta.title = 'a duração desta cena segue a narração gravada';
     } else {
+      meta.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>';
       const durInp = document.createElement('input');
       durInp.type = 'number'; durInp.min = '1'; durInp.max = '60'; durInp.step = '1';
       durInp.value = entry.dur;
@@ -575,30 +897,38 @@ function renderSceneList() {
         entry.dur = Math.max(1, Math.min(60, Math.round(+durInp.value) || 5));
         durInp.value = entry.dur;
       });
-      durRow.appendChild(durInp);
-      durRow.appendChild(document.createTextNode(' ⏱ s'));
+      meta.appendChild(durInp);
+      meta.appendChild(document.createTextNode('s'));
     }
-    const micRow = document.createElement('div');
-    micRow.className = 'scenebtns';
-    const micBtn = document.createElement('button');
+
+    // ações em ícones
+    const acts = document.createElement('div');
+    acts.className = 'sceneacts';
     const gravandoEsta = micRecorder && micSceneIdx === i;
-    micBtn.textContent = gravandoEsta ? '⏹ parar' : (entry.audio ? '🎤 regravar' : '🎤 narrar');
-    if (gravandoEsta) micBtn.style.cssText = 'background:#dc2626;color:#fff;border-color:#dc2626';
-    micBtn.title = 'grave sua voz — a cena vai durar o tempo exato da fala';
-    micBtn.addEventListener('click', () => toggleMicRecord(i));
-    micRow.appendChild(micBtn);
-    if (entry.audio && !gravandoEsta) {
-      const pl = document.createElement('button');
-      pl.textContent = '▶';
-      pl.title = 'ouvir a narração';
-      pl.addEventListener('click', () => playSceneAudio(entry.audio, 0, null));
-      const delA = document.createElement('button');
-      delA.textContent = '✕';
-      delA.title = 'apagar a narração';
-      delA.addEventListener('click', () => { entry.audio = null; renderSceneList(); });
-      micRow.appendChild(pl); micRow.appendChild(delA);
+    if (gravandoEsta) {
+      const stopB = mkBtn('stop', 'parar a gravação', 'recording');
+      stopB.addEventListener('click', () => toggleMicRecord(i));
+      acts.appendChild(stopB);
+    } else {
+      if (entry.audio) {
+        const pl = mkBtn('play', 'ouvir a narração');
+        pl.addEventListener('click', () => playSceneAudio(entry.audio, 0, null));
+        acts.appendChild(pl);
+      }
+      const micBtn = mkBtn('mic', entry.audio ? 'regravar a narração' : 'narrar esta cena (ela dura o tempo da fala)');
+      micBtn.addEventListener('click', () => toggleMicRecord(i));
+      acts.appendChild(micBtn);
+      if (entry.audio) {
+        const delA = mkBtn('eraser', 'apagar a narração');
+        delA.addEventListener('click', () => { entry.audio = null; renderSceneList(); });
+        acts.appendChild(delA);
+      }
+      const rm = mkBtn('trash', 'remover esta cena', 'danger');
+      rm.addEventListener('click', () => { sceneImages.splice(i, 1); scenesChanged(); });
+      acts.appendChild(rm);
     }
-    item.appendChild(num); item.appendChild(th); item.appendChild(durRow); item.appendChild(micRow); item.appendChild(btns);
+
+    item.appendChild(num); item.appendChild(thumbWrap); item.appendChild(meta); item.appendChild(acts);
     box.appendChild(item);
   });
 }
@@ -682,8 +1012,8 @@ el('sampleBtn').addEventListener('click', e => {
 
 // ---------- controles ----------
 el('duration').addEventListener('input', () => {
-  el('durationVal').textContent = el('duration').value + ' segundos' + (sceneImages.length > 1 ? ' (cada cena)' : '');
-  sceneImages.forEach(entry => { entry.dur = +el('duration').value; });
+  const v = Math.max(3, Math.min(45, Math.round(+el('duration').value) || 10));
+  sceneImages.forEach(entry => { entry.dur = v; });
   renderSceneList();
 });
 el('sensitivity').addEventListener('input', () => {
@@ -691,11 +1021,9 @@ el('sensitivity').addEventListener('input', () => {
   el('sensitivityVal').textContent = v < 55 ? 'só traços bem escuros' : v <= 90 ? 'normal' : 'pega traços claros';
   if (sceneImages.length) prepare();
 });
-el('format').addEventListener('change', () => { if (sceneImages.length) prepare(); });
-el('order').addEventListener('change', () => { if (sceneImages.length) prepare(); });
-el('scenePause').addEventListener('input', () => {
-  el('scenePauseVal').textContent = el('scenePause').value + ' s';
-});
+el('format').addEventListener('change', () => { syncFormatChips(); updateStyleSummary(); if (sceneImages.length) prepare(); });
+el('order').addEventListener('change', () => { updateStyleSummary(); if (sceneImages.length) prepare(); });
+el('scenePause').addEventListener('input', updateStyleSummary);
 
 // ---------- pipeline: imagens -> cartolina com câmera ----------
 function prepare() {
@@ -719,8 +1047,8 @@ function prepare() {
     return;
   }
   setStatus(n === 1
-    ? 'Traços encontrados! Clica em "Ver prévia" ou já gera o vídeo direto.'
-    : '🎥 Modo cartolina com ' + n + ' cenas! Abaixo está o quadro FINAL (depois do zoom out). Aperta "Ver prévia" pra ver a câmera passear.');
+    ? 'Traços encontrados! Clica em "Prévia" ou já gera o vídeo direto.'
+    : '🎥 Modo cartolina com ' + n + ' cenas! Abaixo está o quadro FINAL (depois do zoom out). Aperta "Prévia" pra ver a câmera passear.');
 
   // mostra a cartolina completa (como o vídeo termina)
   scenes.forEach(sc => revealPixels(sc, sc.revealOrder.length));
@@ -1351,16 +1679,28 @@ el('handFile').addEventListener('change', () => {
 
 let handUndoStack = [];
 function updateHandButtons() {
-  el('handBgDone').style.display = handStep === 'fundo' ? 'inline-block' : 'none';
-  el('handStrengthRow').style.display = (handStep === 'fundo' && el('handTool').value === 'clique') ? 'block' : 'none';
-  el('handToolsRow').style.display = handStep ? 'block' : 'none';
-  el('handDespeckle').style.display = handStep === 'fundo' ? 'inline-block' : 'none';
-  el('brushSizeWrap').style.display = el('handTool').value === 'borracha' ? 'inline' : 'none';
-  el('handUndo').style.display = (handStep === 'fundo' && handUndoStack.length > 0) ? 'inline-block' : 'none';
-  el('handRestart').style.display = (handStep && handOriginal) ? 'inline-block' : 'none';
   const temMao = !!(customHand && customHand.tipX !== null && customHand.tipX !== undefined);
-  el('handDownload').style.display = temMao ? 'inline-block' : 'none';
-  el('handBake').style.display = temMao ? 'inline-block' : 'none';
+  // etapa do assistente: 1 recorte, 2 ponta, 3 salvar (0 = ainda sem foto)
+  const step = handStep === 'fundo' ? 1 : handStep === 'ponta' ? (temMao ? 3 : 2) : (temMao ? 3 : 0);
+  el('handWizard').style.display = (wizOpen || handStep) ? 'block' : 'none';
+  document.querySelectorAll('#handWizard .wizstep').forEach(t => {
+    const n = +t.dataset.step;
+    t.classList.toggle('on', n === step);
+    t.classList.toggle('done', n < step);
+  });
+  el('wizPanel1').style.display = step === 1 ? 'flex' : 'none';
+  el('wizPanel2').style.display = step === 2 ? 'flex' : 'none';
+  el('wizPanel3').style.display = step === 3 ? 'flex' : 'none';
+  el('handUploadRow').style.display = (step === 0 || step === 3) ? 'block' : 'none';
+  el('handZoomRow').style.display = handStep ? 'flex' : 'none';
+  el('handStrengthRow').style.display = (handStep === 'fundo' && el('handTool').value === 'clique') ? 'flex' : 'none';
+  el('brushSizeWrap').style.display = el('handTool').value === 'borracha' ? 'flex' : 'none';
+  el('handUndo').style.display = (handStep === 'fundo' && handUndoStack.length > 0) ? 'flex' : 'none';
+  el('handRestart').style.display = (handStep && handOriginal) ? 'flex' : 'none';
+  el('handName').textContent = temMao ? 'Sua foto ✓' : 'Ilustrada padrão';
+  document.querySelectorAll('#handToolBtns button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === el('handTool').value)));
+  updateHandMini();
+  updateStyleSummary();
 }
 
 // apaga o fundo a partir de um clique — SÓ a área conectada ao ponto
@@ -1817,6 +2157,7 @@ function runAnimation(onDone, audioDest) {
     const done = t >= totalMs;
 
     let cam = cameraOf(0), handTarget = null, drawing = false;
+    let phaseText = '';
     let acc = 0;
     for (const ph of phases) {
       if (t > acc + ph.ms) {
@@ -1829,6 +2170,7 @@ function runAnimation(onDone, audioDest) {
       const pr = Math.max(0, (t - acc) / ph.ms);
       if (ph.type === 'draw') {
         const sc = scenes[ph.i];
+        phaseText = n > 1 ? 'desenhando a cena ' + (ph.i + 1) + ' de ' + n + '\u2026' : 'desenhando\u2026';
         if (ph.audio && !ph.audioStarted) {
           ph.audioStarted = true;
           playSceneAudio(ph.audio, (t - acc) / 1000, audioDest);
@@ -1846,6 +2188,7 @@ function runAnimation(onDone, audioDest) {
         }
       } else if (ph.type === 'pause') {
         // cena pronta descansando na tela: câmera parada, mão levantada
+        phaseText = 'cena ' + (ph.i + 1) + ' pronta \u2014 pausinha\u2026';
         cam = cameraOf(ph.i);
         const sc = scenes[ph.i];
         if (sc.revealOrder.length) {
@@ -1857,6 +2200,7 @@ function runAnimation(onDone, audioDest) {
           };
         }
       } else if (ph.type === 'move') {
+        phaseText = 'indo pra cena ' + (ph.i + 2) + '\u2026';
         const e2 = ease(pr);
         const a2 = cameraOf(ph.i), b2 = cameraOf(ph.i + 1);
         cam = {
@@ -1874,6 +2218,7 @@ function runAnimation(onDone, audioDest) {
           };
         }
       } else if (ph.type === 'zoom') {
+        phaseText = 'zoom out: revelando a cartolina\u2026';
         const e2 = ease(pr);
         const a2 = cameraOf(n - 1);
         cam = {
@@ -1882,6 +2227,7 @@ function runAnimation(onDone, audioDest) {
           z: a2.z + (fitCam.z - a2.z) * e2,
         };
       } else { // hold
+        phaseText = 'último olhar\u2026';
         cam = fitCam;
       }
       break;
@@ -1892,6 +2238,10 @@ function runAnimation(onDone, audioDest) {
     }
 
     drawWorld(cam);
+
+    const plab = el('phaseLabel');
+    if (done) phaseText = '';
+    if (plab.textContent !== phaseText) plab.textContent = phaseText;
 
     if (!done && useHand && handTarget) {
       // a mão vive no espaço da TELA: projeta o alvo pela câmera, assim
@@ -1968,6 +2318,7 @@ function recordWith(candidates, idx) {
   const chosen = candidates[idx];
   setButtons(false);
   el('resultCard').style.display = 'none';
+  el('stageMain').style.display = 'block';
   el('progressbar').style.display = 'block';
   setStatus(idx === 0
     ? 'Gravando o vídeo… (a animação vai rodar uma vez na tela)'
@@ -2006,6 +2357,7 @@ function recordWith(candidates, idx) {
     el('formatNote').textContent = chosen.ext === 'mp4'
       ? 'Arquivo MP4 — funciona em WhatsApp, Instagram, YouTube e afins.'
       : 'Arquivo WebM — funciona no YouTube e na maioria dos lugares. Se precisar de MP4 (ex.: WhatsApp), me avisa que eu adapto o app.';
+    el('stageMain').style.display = 'none';
     el('resultCard').style.display = 'block';
     el('resultCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     setStatus('Pronto! Vídeo gerado.');
@@ -2020,8 +2372,75 @@ function recordWith(candidates, idx) {
 function setStatus(msg, isError) {
   const s = el('status');
   s.textContent = msg;
-  s.className = isError ? 'err' : '';
+  s.className = (msg ? 'show' : '') + (isError ? ' err' : '');
 }
+
+// ---------- redesign: resumo do estilo, chips e assistente ----------
+var wizOpen = false;
+
+function syncFormatChips() {
+  document.querySelectorAll('.chip[data-format]').forEach(ch =>
+    ch.setAttribute('aria-pressed', String(ch.dataset.format === el('format').value)));
+}
+document.querySelectorAll('.chip[data-format]').forEach(ch => ch.addEventListener('click', () => {
+  el('format').value = ch.dataset.format;
+  el('format').dispatchEvent(new Event('change'));
+}));
+
+document.querySelectorAll('#handToolBtns button').forEach(b => b.addEventListener('click', () => {
+  el('handTool').value = b.dataset.tool;
+  el('handTool').dispatchEvent(new Event('change'));
+}));
+
+// resumo do passo 2 ("16:9 · texto por último · pausa 1s · mão: sua foto")
+function updateStyleSummary() {
+  const fmt = { '1280x720': '16:9', '720x1280': '9:16', '1080x1080': '1:1' }[el('format').value] || '';
+  const ordMap = { cima: 'de cima pra baixo', baixo: 'de baixo pra cima', esq: 'da esquerda', dir: 'da direita', 'texto-fim': 'texto por último', 'texto-ini': 'texto primeiro' };
+  const pausa = 'pausa ' + (+el('scenePause').value || 0) + 's';
+  const temMao = !!(customHand && customHand.tipX !== null && customHand.tipX !== undefined);
+  const mao = el('showHand').checked ? ('mão: ' + (temMao ? 'sua foto ✓' : 'ilustrada')) : 'sem mão';
+  el('styleSummary').textContent = [fmt, ordMap[el('order').value] || '', pausa, mao].join('  ·  ');
+}
+
+// miniatura da mão atual (na barra de resumo e no campo do estilo)
+function updateHandMini() {
+  const temMao = !!(customHand && customHand.tipX !== null && customHand.tipX !== undefined);
+  const hand = temMao ? customHand : defaultHand;
+  const draw = () => ['handMiniBar', 'handMiniField'].forEach(id => {
+    const c = el(id);
+    if (!c) return;
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, c.width, c.height);
+    const k = Math.min(c.width / hand.w, c.height / hand.h) * 0.94;
+    g.drawImage(hand.img, (c.width - hand.w * k) / 2, (c.height - hand.h * k) / 2, hand.w * k, hand.h * k);
+  });
+  const im = hand.img;
+  if (im instanceof HTMLCanvasElement || (im.complete && im.naturalWidth)) draw();
+  else im.addEventListener('load', draw, { once: true });
+}
+
+el('styleToggle').addEventListener('click', () => {
+  const open = el('stylePanel').classList.toggle('open');
+  el('styleToggle').setAttribute('aria-expanded', String(open));
+});
+
+el('handCustomize').addEventListener('click', () => {
+  wizOpen = !wizOpen;
+  updateHandButtons();
+  if (wizOpen) el('handWizard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+el('showHand').addEventListener('change', updateStyleSummary);
+
+// "Voltar a editar": esconde o resultado e devolve o palco
+el('backBtn').addEventListener('click', () => {
+  el('resultCard').style.display = 'none';
+  el('stageMain').style.display = 'block';
+  if (scenes) drawWorld(cameraFinal());
+});
+
+syncFormatChips();
+updateHandButtons();
 </script>
 </body>
 </html>
