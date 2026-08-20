@@ -389,6 +389,16 @@
     position: absolute; right: -8px; bottom: -8px; width: 18px; height: 18px;
     background: var(--blue); border: 2px solid #fff; border-radius: 5px; cursor: nwse-resize;
   }
+  /* guia da área visível no Reels (a sombra em volta é o que o Instagram cobre) */
+  .saGuide {
+    position: absolute; pointer-events: none;
+    border: 1.5px dashed #e8734a; border-radius: 6px;
+    box-shadow: 0 0 0 2000px rgba(90, 90, 90, 0.16);
+  }
+  .saGuide span {
+    position: absolute; top: 3px; right: 8px;
+    font-family: var(--hand); font-weight: 600; font-size: .78rem; color: #e8734a;
+  }
 
   footer { text-align: center; color: var(--muted); font-size: .82rem; margin-top: 36px; }
   footer .hand { font-family: var(--hand); font-size: 1.05rem; }
@@ -488,13 +498,13 @@
         <div class="field">
           <span class="flabel">Formato do vídeo</span>
           <div class="chips" role="group" aria-label="Formato do vídeo">
-            <button class="chip" data-format="1280x720" aria-pressed="true">16:9</button>
-            <button class="chip" data-format="720x1280" aria-pressed="false">9:16</button>
+            <button class="chip" data-format="720x1280" aria-pressed="true">9:16</button>
+            <button class="chip" data-format="1280x720" aria-pressed="false">16:9</button>
             <button class="chip" data-format="1080x1080" aria-pressed="false">1:1</button>
           </div>
           <select id="format" hidden>
+            <option value="720x1280" selected>Vertical 9:16 (Reels / Stories)</option>
             <option value="1280x720">Paisagem 16:9 (YouTube)</option>
-            <option value="720x1280">Vertical 9:16 (Reels / Stories)</option>
             <option value="1080x1080">Quadrado 1:1 (Feed)</option>
           </select>
         </div>
@@ -1057,6 +1067,16 @@ function prepare() {
   el('layoutCard').style.display = 'none';
 }
 
+// área útil do quadro: no 9:16 (Reels), a interface do Instagram cobre
+// 220px no topo, 450px embaixo e 35px nas laterais (proporções do guia
+// oficial em 1080x1920) — os desenhos precisam caber no miolo livre.
+// Nos outros formatos, a tela inteira é útil.
+function safeArea(W, H) {
+  if (W * 16 !== H * 9) return { x: 0, y: 0, w: W, h: H };
+  const top = H * (220 / 1920), bottom = H * (450 / 1920), side = W * (35 / 1080);
+  return { x: side, y: top, w: W - side * 2, h: H - top - bottom };
+}
+
 // calcula onde cada cena fica na cartolina: usa a posição/tamanho que a
 // pessoa escolheu no editor, ou distribui numa grade compacta (área
 // desenhada aparada, ocupando 86% da célula)
@@ -1065,6 +1085,9 @@ function computeLayout() {
   const n = scenes.length;
   const K = n === 1 ? 1 : Math.max(2, Math.ceil(Math.sqrt(n)));
   grid = { worldW: K * W, worldH: K * H, fitZoom: 1 / K, cx: K * W / 2, cy: K * H / 2 };
+  // no zoom out final a cartolina inteira vira a tela do vídeo: a grade
+  // automática se espalha só pela parte que fica visível no Reels
+  const sa = safeArea(W, H);
   const cols = Math.ceil(Math.sqrt(n));
   const rows = Math.ceil(n / cols);
   scenes.forEach((sc, i) => {
@@ -1083,9 +1106,9 @@ function computeLayout() {
     } else {
       const r = (i / cols) | 0;
       const inRow = Math.min(cols, n - r * cols);
-      const cw = grid.worldW / cols, ch = grid.worldH / rows;
-      const cx0 = ((i - r * cols) + (cols - inRow) / 2) * cw;
-      const cy0 = r * ch;
+      const cw = sa.w * K / cols, ch = sa.h * K / rows;
+      const cx0 = sa.x * K + ((i - r * cols) + (cols - inRow) / 2) * cw;
+      const cy0 = sa.y * K + r * ch;
       const sfit = Math.min(cw * 0.86 / sc.src.bw, ch * 0.86 / sc.src.bh);
       const w = sc.src.bw * sfit, h = sc.src.bh * sfit;
       sc.rect = { x: cx0 + (cw - w) / 2, y: cy0 + (ch - h) / 2, w, h };
@@ -1097,12 +1120,19 @@ function cameraOf(i) {
   const W = canvas.width, H = canvas.height;
   const sc = scenes[i];
   if (scenes.length === 1) return { cx: W / 2, cy: H / 2, z: 1 };
-  // fecha a câmera pra cena preencher a tela — mas sem esticar demais
+  // fecha a câmera pra cena preencher a área útil — mas sem esticar demais
   // os pixels (senão o traço fica borrado)
-  const zFit = Math.min(W * 0.86 / sc.rect.w, H * 0.86 / sc.rect.h);
+  const sa = safeArea(W, H);
+  const zFit = Math.min(sa.w * 0.86 / sc.rect.w, sa.h * 0.86 / sc.rect.h);
   const zMax = 1.35 * sc.src.bw / sc.rect.w;
   const z = Math.min(zFit, zMax);
-  return { cx: sc.rect.x + sc.rect.w / 2, cy: sc.rect.y + sc.rect.h / 2, z };
+  // mira o centro da ÁREA ÚTIL (no Reels ela fica mais pra cima, porque a
+  // interface cobre mais a parte de baixo do que a de cima)
+  return {
+    cx: sc.rect.x + sc.rect.w / 2 - (sa.x + sa.w / 2 - W / 2) / z,
+    cy: sc.rect.y + sc.rect.h / 2 - (sa.y + sa.h / 2 - H / 2) / z,
+    z,
+  };
 }
 function cameraFinal() {
   return scenes.length === 1 ? cameraOf(0) : { cx: grid.cx, cy: grid.cy, z: grid.fitZoom };
@@ -1144,17 +1174,18 @@ function prepareScene(img, W, H, cropInk) {
   const off = document.createElement('canvas');
   off.width = W; off.height = H;
   const octx = off.getContext('2d', { willReadFrequently: true });
-  const margin = Math.round(Math.min(W, H) * 0.05);
+  const sa = safeArea(W, H);
+  const margin = Math.round(Math.min(sa.w, sa.h) * 0.05);
   let srcX = 0, srcY = 0, srcW = img.width, srcH = img.height;
   if (cropInk) {
     const bb = inkBBoxOfImage(img, +el('sensitivity').value);
     if (bb) { srcX = bb.x; srcY = bb.y; srcW = bb.w; srcH = bb.h; }
   }
-  const scale = Math.min((W - margin * 2) / srcW, (H - margin * 2) / srcH);
+  const scale = Math.min((sa.w - margin * 2) / srcW, (sa.h - margin * 2) / srcH);
   const dw = srcW * scale, dh = srcH * scale;
   octx.fillStyle = '#fff';
   octx.fillRect(0, 0, W, H);
-  octx.drawImage(img, srcX, srcY, srcW, srcH, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  octx.drawImage(img, srcX, srcY, srcW, srcH, sa.x + (sa.w - dw) / 2, sa.y + (sa.h - dh) / 2, dw, dh);
   const srcData = octx.getImageData(0, 0, W, H);
 
   const scene = {
@@ -1482,6 +1513,22 @@ function buildLayoutBoard() {
     });
     ['pointerup', 'pointercancel'].forEach(ev => it.addEventListener(ev, () => { mode = null; }));
   });
+
+  // no 9:16, sombreia as faixas que a interface do Reels cobre (curtir,
+  // comentários, legenda…) — fica por cima de tudo, mas sem bloquear o arrasto
+  const sa = safeArea(canvas.width, canvas.height);
+  if (sa.y > 0) {
+    const g = document.createElement('div');
+    g.className = 'saGuide';
+    g.style.left = (100 * sa.x / canvas.width) + '%';
+    g.style.top = (100 * sa.y / canvas.height) + '%';
+    g.style.width = (100 * sa.w / canvas.width) + '%';
+    g.style.height = (100 * sa.h / canvas.height) + '%';
+    const lbl = document.createElement('span');
+    lbl.textContent = 'área visível no Reels';
+    g.appendChild(lbl);
+    board.appendChild(g);
+  }
 }
 
 function placeLayItem(it, sc) {

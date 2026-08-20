@@ -5,7 +5,7 @@ Transforme uma imagem estilo quadro branco em um vídeo de **whiteboard animatio
 ## Como usar
 
 1. Abra o app e arraste uma imagem de traço sobre fundo claro (PNG ou JPG) — ou clique em "Testar com um desenho de exemplo".
-2. Ajuste duração, formato (16:9, 9:16 ou 1:1), ordem do desenho (de cima pra baixo, texto primeiro/último etc.) e a mão.
+2. Ajuste duração, formato (9:16 pra Reels é o padrão; também 16:9 e 1:1), ordem do desenho (de cima pra baixo, texto primeiro/último etc.) e a mão. No 9:16, os desenhos ficam automaticamente dentro da área que a interface do Instagram não cobre.
 3. Veja a prévia e clique em **Gerar vídeo** — sai um MP4 pronto para WhatsApp, Instagram ou YouTube.
 
 ## Mão personalizada
