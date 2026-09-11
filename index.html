@@ -859,7 +859,7 @@
 
     <div class="studiobar">
       <button class="recbtn" id="recBtn"><svg class="ic" aria-hidden="true"><use href="#i-rec"/></svg><span id="recLabel">Gravar</span></button>
-      <button class="donebtn" id="doneBtn" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Concluir</button>
+      <button class="donebtn" id="doneBtn" style="display:none" title="salvar a narração e voltar pra tela principal"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Concluir</button>
       <div class="timer" id="recTimer"><i class="dot"></i><span id="recTime">0:00</span></div>
       <div class="meter" id="recMeter"><i></i></div>
       <div class="grow"></div>
@@ -1437,6 +1437,12 @@ function commitTake(silencioso) {
   }
 }
 
+// o botão Concluir: salva e volta pra tela principal
+async function concluir() {
+  await finishRec(false);
+  await closeStudio();
+}
+
 async function finishRec(silencioso) {
   if (ST.mode === 'rec') { ST.mode = 'busy'; renderStudio(); await closeSegment(); }
   stopScroll();
@@ -1677,7 +1683,7 @@ setInterval(() => {
 
 // ---- ligações dos botões ----
 el('recBtn').addEventListener('click', toggleRec);
-el('doneBtn').addEventListener('click', () => finishRec(false));
+el('doneBtn').addEventListener('click', concluir);
 el('undoSegBtn').addEventListener('click', undoSeg);
 el('studioClose').addEventListener('click', closeStudio);
 el('studioPrev').addEventListener('click', () => gotoScene(-1));
@@ -1710,7 +1716,7 @@ document.addEventListener('keydown', e => {
     if (!(foco.id === 'promptBox' && foco.readOnly)) return;
   }
   if (e.code === 'Space') { e.preventDefault(); toggleRec(); }
-  else if (e.key === 'Enter') { e.preventDefault(); if (ST.mode === 'rec' || ST.mode === 'paused') finishRec(false); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (ST.mode === 'rec' || ST.mode === 'paused' || ST.take) concluir(); }
   else if (e.key === 'ArrowDown') { e.preventDefault(); nudgeScroll(1); }
   else if (e.key === 'ArrowUp') { e.preventDefault(); nudgeScroll(-1); }
   else if (e.key === '+' || e.key === '=') { el('promptSpeed').value = Math.min(10, +el('promptSpeed').value + 1); }
