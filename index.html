@@ -1244,6 +1244,10 @@ function gotoScene(delta) {
 
 // ---- microfone ----
 async function ensureMic() {
+  if (!window.MediaRecorder || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setStudioMsg('Este navegador não consegue gravar áudio. Tenta o Chrome ou o Safari mais recentes — o teleprompter funciona mesmo assim.', true);
+    return false;
+  }
   if (ST.stream && ST.stream.active) return true;
   try {
     ST.stream = await navigator.mediaDevices.getUserMedia({
@@ -1296,11 +1300,18 @@ function startSegment() {
     if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) { mime = m; return true; }
     return false;
   });
-  ST.rec = mime ? new MediaRecorder(ST.stream, { mimeType: mime }) : new MediaRecorder(ST.stream);
-  ST.rec.ondataavailable = e => { if (e.data.size) ST.chunks.push(e.data); };
-  ST.rec.start();
+  try {
+    ST.rec = mime ? new MediaRecorder(ST.stream, { mimeType: mime }) : new MediaRecorder(ST.stream);
+    ST.rec.ondataavailable = e => { if (e.data.size) ST.chunks.push(e.data); };
+    ST.rec.start();
+  } catch (e) {
+    ST.rec = null;
+    setStudioMsg('O navegador recusou iniciar a gravação. Tenta de novo, ou recarrega a página.', true);
+    return false;
+  }
   ST.segStart = performance.now();
   ST.segScroll = el('promptBox').scrollTop;
+  return true;
 }
 function stopSegment() {
   return new Promise(resolve => {
@@ -1342,7 +1353,7 @@ async function toggleRec() {
   else setStudioMsg(ST.segs.length ? 'Gravando de novo — continuando de onde parou.' : 'Gravando… lê no seu ritmo; dá pra pausar a hora que quiser.');
   el('promptBox').readOnly = true;
   el('promptBox').blur();
-  startSegment();
+  if (!startSegment()) { el('promptBox').readOnly = false; renderStudio(); return; }
   ST.mode = 'rec';
   startScroll();
   renderStudio();
