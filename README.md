@@ -15,10 +15,12 @@ Cada cena tem um estúdio próprio, com teleprompter e gravação em trechos:
 
 - escreva o texto da fala e ele sobe sozinho na tela enquanto você grava (velocidade e tamanho ajustáveis, com uma faixa marcando a linha de leitura);
 - **pause e retome quantas vezes quiser** — cada pausa fecha um trecho, e no fim todos são emendados num áudio só;
+- **o texto destrava na pausa**: o teleprompter só fica travado enquanto o microfone está ligado, então dá pra corrigir uma frase que não ficou boa e seguir gravando (o botão "✎ editar o texto" faz o mesmo);
 - **errou no meio?** a onda do áudio aparece ao pausar: arraste o marcador até o último ponto bom, ouça pra conferir e corte — tudo depois do marcador é apagado, o teleprompter volta sozinho pra frase que você estava lendo naquele segundo, e é só gravar de novo dali;
 - "apagar o último trecho" é o atalho pra desfazer só o pedaço desde a última vez que você apertou gravar;
 - a narração já salva vira o ponto de partida quando você reabre o estúdio: dá pra cortar o fim ruim ou continuar gravando a partir dele;
 - "ensaiar a leitura" roda o teleprompter sem gravar, para calibrar a velocidade;
+- "Concluir" salva a narração e volta pra tela principal; o ✕ também salva o que já foi gravado;
 - atalhos: espaço grava/pausa, Enter conclui, ↑ ↓ rolam o texto, Esc fecha;
 - a cena dura exatamente o tempo da narração, e os textos escritos ficam salvos no navegador.
 

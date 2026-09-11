@@ -448,8 +448,9 @@
     padding: 22px 26px 40vh;
   }
   #promptBox::placeholder { color: #a8b2c1; font-weight: 600; }
-  .studio.reading #promptBox { caret-color: transparent; scrollbar-width: none; }
-  .studio.reading #promptBox::-webkit-scrollbar { width: 0; height: 0; }
+  .studio.rec #promptBox { caret-color: transparent; scrollbar-width: none; }
+  .studio.rec #promptBox::-webkit-scrollbar { width: 0; height: 0; }
+  #promptBox:focus { background: rgba(37,99,235,.03); }
   .promptguide {
     position: absolute; left: 0; right: 0; top: 32%;
     height: calc(var(--psize) * 1.55 + 6px);
@@ -463,7 +464,7 @@
     background: linear-gradient(var(--paper), rgba(253,253,252,0));
     display: none;
   }
-  .studio.reading .promptfade { display: block; }
+  .studio.rec .promptfade { display: block; }
   .promptfade.bot { bottom: 0; top: auto; background: linear-gradient(rgba(253,253,252,0), var(--paper)); }
   #scriptRestore { position: absolute; left: 26px; bottom: 14px; }
 
@@ -870,6 +871,7 @@
     <div class="studiofoot">
       <label for="promptSpeed">Velocidade <input type="range" id="promptSpeed" min="0" max="10" step="1" value="5"></label>
       <span class="sizebtns">Texto <button id="promptSmaller" title="diminuir o texto">A−</button><button id="promptBigger" title="aumentar o texto">A+</button></span>
+      <button class="linkbtn" id="editTextBtn">✎ editar o texto</button>
       <button class="linkbtn" id="rehearseBtn">ensaiar a leitura</button>
       <span class="grow"></span>
       <span class="hint">espaço grava/pausa · ↑ ↓ rolam o texto · Esc fecha</span>
@@ -1657,7 +1659,11 @@ function renderStudio() {
   const entry = sceneImages[ST.scene] || {};
   const rec = ST.mode === 'rec', paused = ST.mode === 'paused', busy = ST.mode === 'busy';
   el('studioTitle').textContent = 'Narração da cena ' + (ST.scene + 1) + (sceneImages.length > 1 ? ' de ' + sceneImages.length : '');
-  el('studioSub').textContent = rec ? 'gravando — lê no seu ritmo' : (paused ? 'pausado — dá pra retomar daqui' : 'escreva o texto e leia enquanto grava');
+  el('studioSub').textContent = rec ? 'gravando — lê no seu ritmo'
+    : (paused ? 'pausado — dá pra corrigir o texto e retomar daqui' : 'escreva o texto e leia enquanto grava');
+  // o texto só fica travado enquanto o microfone está ligado; pausado dá pra editar
+  el('promptBox').readOnly = rec || busy;
+  el('editTextBtn').style.display = (rec || busy) ? 'none' : 'inline';
   el('narrStudio').className = 'studio' + (rec ? ' rec' : '') + ((rec || paused) ? ' reading' : '');
   el('recBtn').className = 'recbtn' + (rec ? ' pausing' : '');
   el('recBtn').disabled = busy;
@@ -1689,6 +1695,17 @@ el('studioClose').addEventListener('click', closeStudio);
 el('studioPrev').addEventListener('click', () => gotoScene(-1));
 el('studioNext').addEventListener('click', () => gotoScene(1));
 el('rehearseBtn').addEventListener('click', toggleRehearse);
+el('editTextBtn').addEventListener('click', () => {
+  stopScroll();
+  const box = el('promptBox');
+  box.readOnly = false;
+  box.focus();
+  setStudioMsg('Pode corrigir o texto à vontade. O que já está gravado continua salvo — quando terminar, é só apertar o botão vermelho pra gravar a partir daqui.');
+});
+// clicar no texto durante a gravação: explica como destravar em vez de não fazer nada
+el('promptBox').addEventListener('pointerdown', () => {
+  if (ST.mode === 'rec') setStudioMsg('Pra mexer no texto, aperta Pausar primeiro — aí ele destrava e você continua de onde parou.');
+});
 el('promptSmaller').addEventListener('click', () => setFontSize(ST.fsize - 3));
 el('promptBigger').addEventListener('click', () => setFontSize(ST.fsize + 3));
 el('promptBox').addEventListener('input', () => { commitScript(); syncRestoreBtn(); });
