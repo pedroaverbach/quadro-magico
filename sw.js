@@ -1,7 +1,7 @@
 // Service worker do Quadro Mágico — deixa o app abrir offline.
 // Estratégia: "network-first" pro HTML (pra pegar atualizações quando há
 // internet) e cache pro resto; tudo cai pro cache quando está offline.
-const CACHE = 'quadro-magico-v3';
+const CACHE = 'quadro-magico-v4';
 const ASSETS = [
   './',
   './index.html',

@@ -158,7 +158,6 @@
   }
   .sceneacts button:hover { border-color: var(--blue); color: var(--blue); }
   .sceneacts button.danger:hover { border-color: var(--red); color: var(--red); }
-  .sceneacts button.recording { background: var(--red); border-color: var(--red); color: #fff; }
   #dropzone {
     border: 2px dashed #b7c0cf; border-radius: 10px; background: transparent;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
@@ -400,6 +399,133 @@
     font-family: var(--hand); font-weight: 600; font-size: .78rem; color: #e8734a;
   }
 
+
+  /* ---------- estudio de narracao (teleprompter + gravacao) ---------- */
+  .studio {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(20, 28, 38, .55);
+    display: flex; align-items: center; justify-content: center;
+    padding: 18px;
+  }
+  .studio[hidden] { display: none; }
+  .studiobox {
+    --psize: 30px;
+    background: var(--paper);
+    background-image: radial-gradient(#e3e7ee 1px, transparent 1px);
+    background-size: 22px 22px;
+    border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(15,23,32,.38);
+    width: min(880px, 100%); height: min(680px, 100%);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .studiohead {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; border-bottom: 1px solid var(--border); background: #fff;
+  }
+  .studiohead h3 { font-family: var(--hand); font-weight: 700; font-size: 1.5rem; line-height: 1.1; }
+  .studiohead .sub { font-size: .78rem; color: var(--muted); }
+  .studiohead .grow { flex: 1; min-width: 0; }
+  #studioThumb { width: 58px; height: 41px; border: 1px solid var(--border); border-radius: 6px; flex: none; background: #fff; }
+  .ghostbtn {
+    background: #fff; border: 1px solid var(--border); border-radius: 9px;
+    min-width: 36px; height: 36px; padding: 0 9px; flex: none;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    color: var(--muted); font-size: .85rem; font-weight: 700;
+  }
+  .ghostbtn:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+  .ghostbtn.danger:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+  .ghostbtn .ic { width: 16px; height: 16px; }
+  .ghostbtn.prev .ic { transform: rotate(90deg); }
+  .ghostbtn.next .ic { transform: rotate(-90deg); }
+
+  /* o texto pra ler: e um campo editavel que vira teleprompter na gravacao */
+  .promptwrap { position: relative; flex: 1; min-height: 0; }
+  #promptBox {
+    width: 100%; height: 100%; display: block; resize: none;
+    border: none; outline: none; background: transparent; color: var(--ink);
+    font-family: var(--body); font-weight: 700;
+    font-size: var(--psize); line-height: 1.55;
+    padding: 22px 26px 40vh;
+  }
+  #promptBox::placeholder { color: #a8b2c1; font-weight: 600; }
+  .studio.reading #promptBox { caret-color: transparent; scrollbar-width: none; }
+  .studio.reading #promptBox::-webkit-scrollbar { width: 0; height: 0; }
+  .promptguide {
+    position: absolute; left: 0; right: 0; top: 32%;
+    height: calc(var(--psize) * 1.55 + 6px);
+    border-top: 2px solid rgba(37,99,235,.22); border-bottom: 2px solid rgba(37,99,235,.22);
+    background: rgba(37,99,235,.055);
+    pointer-events: none; display: none;
+  }
+  .studio.reading .promptguide { display: block; }
+  .promptfade {
+    position: absolute; left: 0; right: 0; height: 52px; pointer-events: none;
+    background: linear-gradient(var(--paper), rgba(253,253,252,0));
+    display: none;
+  }
+  .studio.reading .promptfade { display: block; }
+  .promptfade.bot { bottom: 0; top: auto; background: linear-gradient(rgba(253,253,252,0), var(--paper)); }
+  #scriptRestore { position: absolute; left: 26px; bottom: 14px; }
+
+  .studiobar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 11px 14px; border-top: 1px solid var(--border); background: #fff;
+  }
+  .studiobar .grow { flex: 1; }
+  .recbtn {
+    border: none; border-radius: 999px; padding: 11px 22px;
+    font-size: 1rem; font-weight: 800; color: #fff; background: var(--red);
+    display: flex; align-items: center; gap: 9px; flex: none;
+    box-shadow: 0 3px 11px rgba(225,29,72,.3);
+  }
+  .recbtn:hover:not(:disabled) { background: var(--red-dark); }
+  .recbtn.pausing { background: #e08a00; box-shadow: 0 3px 11px rgba(224,138,0,.3); }
+  .recbtn.pausing:hover:not(:disabled) { background: #c47800; }
+  .donebtn {
+    border: none; border-radius: 999px; padding: 11px 20px;
+    font-size: .95rem; font-weight: 800; color: #fff; background: var(--green);
+    display: flex; align-items: center; gap: 8px; flex: none;
+    box-shadow: 0 3px 11px rgba(22,163,74,.28);
+  }
+  .donebtn:hover:not(:disabled) { background: var(--green-dark); }
+  .timer {
+    font-family: var(--hand); font-weight: 700; font-size: 1.45rem; color: var(--ink);
+    display: flex; align-items: center; gap: 7px; flex: none; min-width: 76px;
+  }
+  .timer .dot { width: 10px; height: 10px; border-radius: 50%; background: #d7dce4; flex: none; }
+  .studio.rec .timer .dot { background: var(--red); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  .meter { width: 66px; height: 8px; border-radius: 999px; background: #eef1f5; overflow: hidden; flex: none; }
+  .meter i { display: block; height: 100%; width: 0%; background: var(--green); border-radius: 999px; transition: width .06s linear; }
+
+  .studiofoot {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 9px 14px 11px; border-top: 1px dashed var(--border); background: #fff;
+    font-size: .84rem; color: var(--muted);
+  }
+  .studiofoot label { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .studiofoot input[type="range"] { width: 116px; }
+  .sizebtns { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+  .sizebtns button {
+    border: 1px solid var(--border); background: #fff; border-radius: 7px;
+    width: 30px; height: 28px; font-weight: 800; color: var(--muted); font-size: .85rem;
+  }
+  .sizebtns button:hover { border-color: var(--blue); color: var(--blue); }
+  #studioMsg {
+    margin: 0 14px 12px; font-family: var(--hand); font-weight: 600; font-size: 1.05rem; line-height: 1.3;
+    color: var(--postit-ink); background: var(--postit); border-radius: 2px;
+    padding: 8px 12px; transform: rotate(-0.5deg); box-shadow: 2px 3px 7px rgba(27,39,51,.13);
+  }
+  #studioMsg:empty { display: none; }
+  #studioMsg.err { background: #ffe4e6; color: #9f1239; }
+  .scenescript {
+    margin-top: 7px; padding: 0 2px; font-size: .78rem; line-height: 1.35; color: var(--muted);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    cursor: pointer;
+  }
+  .scenescript:hover { color: var(--blue); }
+  .scenescript .ic { width: 13px; height: 13px; vertical-align: -2px; margin-right: 3px; }
+
   footer { text-align: center; color: var(--muted); font-size: .82rem; margin-top: 36px; }
   footer .hand { font-family: var(--hand); font-size: 1.05rem; }
 
@@ -418,6 +544,14 @@
     .actions .postit { margin-left: 0; }
     #renderBtn, #previewBtn { width: 100%; justify-content: center; }
     .wiztools { width: 100%; }
+    .studio { padding: 0; }
+    .studiobox { width: 100%; height: 100%; border-radius: 0; --psize: 26px; }
+    .studiohead h3 { font-size: 1.25rem; }
+    .studiohead .sub { display: none; }
+    #studioThumb { display: none; }
+    .recbtn, .donebtn { padding: 10px 16px; font-size: .92rem; }
+    .studiofoot .hint { display: none; }
+    .studiofoot input[type="range"] { width: 92px; }
   }
 </style>
 </head>
@@ -439,6 +573,9 @@
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></symbol>
   <symbol id="i-doc" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M12 8v7M9 12l3 3 3-3"/></symbol>
   <symbol id="i-rec" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="7" y="5" width="3.6" height="14" rx="1.3"/><rect x="13.4" y="5" width="3.6" height="14" rx="1.3"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-script" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
 </svg>
 
 <div class="wrap">
@@ -472,7 +609,7 @@
           <button class="samplebtn" id="sampleBtn">✨ Testar com um desenho de exemplo</button>
         </div>
       </div>
-      <div class="postit" id="sceneHint" style="display:none">Arraste um cartão pra trocar a ordem; o microfone grava a narração — a cena dura o tempo da fala 🎙</div>
+      <div class="postit" id="sceneHint" style="display:none">Arraste um cartão pra trocar a ordem; o microfone abre o estúdio — você escreve o texto, lê no teleprompter e grava (dá pra pausar) 🎙</div>
     </div>
     <input type="file" id="fileInput" accept="image/*" multiple>
   </section>
@@ -669,6 +806,51 @@
   </section>
 
   <footer><span class="hand">Quadro Mágico</span> — suas ideias, desenhadas e narradas.</footer>
+</div>
+
+<!-- ============ ESTUDIO DE NARRACAO (teleprompter + gravacao) ============ -->
+<div class="studio" id="narrStudio" hidden>
+  <div class="studiobox" role="dialog" aria-modal="true" aria-labelledby="studioTitle">
+    <div class="studiohead">
+      <button class="ghostbtn prev" id="studioPrev" title="cena anterior"><svg class="ic" aria-hidden="true"><use href="#i-chev"/></svg></button>
+      <canvas id="studioThumb" width="116" height="82" aria-hidden="true"></canvas>
+      <div class="grow">
+        <h3 id="studioTitle">Narração da cena 1</h3>
+        <div class="sub" id="studioSub">escreva o texto e leia enquanto grava</div>
+      </div>
+      <button class="ghostbtn next" id="studioNext" title="próxima cena"><svg class="ic" aria-hidden="true"><use href="#i-chev"/></svg></button>
+      <button class="ghostbtn" id="studioClose" title="fechar (Esc)"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+
+    <div class="promptwrap">
+      <textarea id="promptBox" spellcheck="false" placeholder="Escreva aqui o que você vai falar nesta cena…&#10;&#10;Quando apertar Gravar, este texto começa a subir sozinho pra você ler — dá pra pausar, respirar e retomar de onde parou."></textarea>
+      <div class="promptguide" aria-hidden="true"></div>
+      <div class="promptfade" aria-hidden="true"></div>
+      <div class="promptfade bot" aria-hidden="true"></div>
+      <button class="ghostbtn" id="scriptRestore" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-script"/></svg> usar o texto que você escreveu antes</button>
+    </div>
+
+    <div id="studioMsg"></div>
+
+    <div class="studiobar">
+      <button class="recbtn" id="recBtn"><svg class="ic" aria-hidden="true"><use href="#i-rec"/></svg><span id="recLabel">Gravar</span></button>
+      <button class="donebtn" id="doneBtn" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Concluir</button>
+      <div class="timer" id="recTimer"><i class="dot"></i><span id="recTime">0:00</span></div>
+      <div class="meter" id="recMeter"><i></i></div>
+      <div class="grow"></div>
+      <button class="ghostbtn" id="undoSegBtn" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> apagar o último trecho</button>
+      <button class="ghostbtn" id="playSavedBtn" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> ouvir</button>
+      <button class="ghostbtn danger" id="clearSavedBtn" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-eraser"/></svg> apagar</button>
+    </div>
+
+    <div class="studiofoot">
+      <label for="promptSpeed">Velocidade <input type="range" id="promptSpeed" min="0" max="10" step="1" value="5"></label>
+      <span class="sizebtns">Texto <button id="promptSmaller" title="diminuir o texto">A−</button><button id="promptBigger" title="aumentar o texto">A+</button></span>
+      <button class="linkbtn" id="rehearseBtn">ensaiar a leitura</button>
+      <span class="grow"></span>
+      <span class="hint">espaço grava/pausa · ↑ ↓ rolam o texto · Esc fecha</span>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -914,66 +1096,416 @@ function renderSceneList() {
     // ações em ícones
     const acts = document.createElement('div');
     acts.className = 'sceneacts';
-    const gravandoEsta = micRecorder && micSceneIdx === i;
-    if (gravandoEsta) {
-      const stopB = mkBtn('stop', 'parar a gravação', 'recording');
-      stopB.addEventListener('click', () => toggleMicRecord(i));
-      acts.appendChild(stopB);
-    } else {
-      if (entry.audio) {
-        const pl = mkBtn('play', 'ouvir a narração');
-        pl.addEventListener('click', () => playSceneAudio(entry.audio, 0, null));
-        acts.appendChild(pl);
-      }
-      const micBtn = mkBtn('mic', entry.audio ? 'regravar a narração' : 'narrar esta cena (ela dura o tempo da fala)');
-      micBtn.addEventListener('click', () => toggleMicRecord(i));
-      acts.appendChild(micBtn);
-      if (entry.audio) {
-        const delA = mkBtn('eraser', 'apagar a narração');
-        delA.addEventListener('click', () => { entry.audio = null; renderSceneList(); });
-        acts.appendChild(delA);
-      }
-      const rm = mkBtn('trash', 'remover esta cena', 'danger');
-      rm.addEventListener('click', () => { sceneImages.splice(i, 1); scenesChanged(); });
-      acts.appendChild(rm);
+    if (entry.audio) {
+      const pl = mkBtn('play', 'ouvir a narração');
+      pl.addEventListener('click', () => playSceneAudio(entry.audio, 0, null));
+      acts.appendChild(pl);
     }
+    const micBtn = mkBtn('mic', entry.audio ? 'abrir o estúdio (reescrever o texto ou regravar)' : 'abrir o estúdio: escrever o texto e gravar lendo');
+    micBtn.addEventListener('click', () => openStudio(i));
+    acts.appendChild(micBtn);
+    if (entry.audio) {
+      const delA = mkBtn('eraser', 'apagar a narração');
+      delA.addEventListener('click', () => { entry.audio = null; renderSceneList(); });
+      acts.appendChild(delA);
+    }
+    const rm = mkBtn('trash', 'remover esta cena', 'danger');
+    rm.addEventListener('click', () => { sceneImages.splice(i, 1); scenesChanged(); });
+    acts.appendChild(rm);
 
     item.appendChild(num); item.appendChild(thumbWrap); item.appendChild(meta); item.appendChild(acts);
+    // previa do texto escrito pra esta cena (clique abre o estúdio)
+    if (entry.script && entry.script.trim()) {
+      const sp = document.createElement('div');
+      sp.className = 'scenescript';
+      sp.title = 'abrir o estúdio de narração';
+      sp.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-script"/></svg>';
+      sp.appendChild(document.createTextNode(entry.script.trim().replace(/\s+/g, ' ')));
+      sp.addEventListener('pointerdown', e => e.stopPropagation());
+      sp.addEventListener('click', () => openStudio(i));
+      item.appendChild(sp);
+    }
     box.appendChild(item);
   });
 }
 
-// ---------- narração por cena (microfone) ----------
-let micRecorder = null, micSceneIdx = null, micStream = null;
-async function toggleMicRecord(i) {
-  if (micRecorder) { try { micRecorder.stop(); } catch (e) {} return; }
-  try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch (e) {
-    setStatus('Não consegui acessar o microfone — verifica a permissão do navegador. 🎤', true);
-    return;
-  }
-  const chunks = [];
-  micRecorder = new MediaRecorder(micStream);
-  micSceneIdx = i;
-  micRecorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-  micRecorder.onstop = async () => {
-    micStream.getTracks().forEach(tr => tr.stop());
-    const blob = new Blob(chunks, { type: micRecorder.mimeType });
-    micRecorder = null; micSceneIdx = null;
-    try {
-      const audioBuf = await getAudioCtx().decodeAudioData(await blob.arrayBuffer());
-      sceneImages[i].audio = { buffer: audioBuf, duration: audioBuf.duration };
-      setStatus('Narração da cena ' + (i + 1) + ' gravada (' + audioBuf.duration.toFixed(1) + 's). A cena vai durar exatamente o tempo da fala, e a voz sai no vídeo final. 🎙');
-    } catch (e) {
-      setStatus('Não consegui processar a gravação — tenta de novo.', true);
+// ---------- estúdio de narração: teleprompter + gravação com pausa ----------
+// A gravação é feita em TRECHOS: cada "pausar" fecha um trecho e cada "retomar"
+// abre outro. No fim os trechos são emendados num áudio só — é isso que deixa
+// parar no meio, respirar (ou reler) e continuar de onde parou, sem perder nada.
+const ST = {
+  open: false, scene: -1, mode: 'idle',   // idle | rec | paused | busy
+  stream: null, rec: null, chunks: [], segs: [],
+  segStart: 0, segScroll: 0,
+  scrolling: false, scrollPos: 0, lastSet: -1, lastT: 0, raf: null, oldScript: '',
+  analyser: null, srcNode: null, meterRaf: null, fsize: 30,
+};
+const SCRIPT_KEY = 'quadroMagicoRoteiros';
+
+const fmtClock = sec => {
+  sec = Math.max(0, Math.round(sec));
+  return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+};
+const fmtDur = sec => sec.toFixed(1).replace('.', ',') + 's';
+
+// emenda vários pedaços de áudio num só (todos vêm do mesmo microfone)
+function concatBuffers(bufs) {
+  if (!bufs.length) return null;
+  if (bufs.length === 1) return bufs[0];
+  const a = getAudioCtx();
+  const ch = bufs.reduce((m, b) => Math.max(m, b.numberOfChannels), 1);
+  const len = bufs.reduce((n, b) => n + b.length, 0);
+  const out = a.createBuffer(ch, len, a.sampleRate);
+  let off = 0;
+  bufs.forEach(b => {
+    for (let c = 0; c < ch; c++) {
+      out.getChannelData(c).set(b.getChannelData(Math.min(c, b.numberOfChannels - 1)), off);
     }
-    renderSceneList();
+    off += b.length;
+  });
+  return out;
+}
+
+function setStudioMsg(msg, isErr) {
+  const m = el('studioMsg');
+  m.textContent = msg || '';
+  m.className = isErr ? 'err' : '';
+}
+
+// ---- roteiros salvos no navegador (pra não perder o texto se recarregar) ----
+function loadScripts() {
+  try { return JSON.parse(localStorage.getItem(SCRIPT_KEY)) || []; } catch (e) { return []; }
+}
+function saveScripts() {
+  try { localStorage.setItem(SCRIPT_KEY, JSON.stringify(sceneImages.map(e => (e && e.script) || ''))); } catch (e) {}
+}
+function commitScript() {
+  const entry = sceneImages[ST.scene];
+  if (!entry) return;
+  entry.script = el('promptBox').value;
+  saveScripts();
+}
+// o convite pra recuperar o texto de antes só faz sentido com a folha em branco
+function syncRestoreBtn() {
+  const pode = ST.oldScript && !el('promptBox').value.trim() && ST.mode === 'idle';
+  el('scriptRestore').style.display = pode ? 'flex' : 'none';
+}
+
+// ---- abrir / fechar ----
+function openStudio(i) {
+  if (!sceneImages[i]) return;
+  ST.open = true; ST.scene = i; ST.mode = 'idle';
+  ST.segs = []; ST.segStart = 0;
+  el('narrStudio').hidden = false;
+  document.body.style.overflow = 'hidden';
+  const entry = sceneImages[i];
+  const box = el('promptBox');
+  box.value = entry.script || '';
+  box.readOnly = false;
+  box.scrollTop = 0; ST.scrollPos = 0; ST.lastSet = -1;
+  // miniatura da cena que está sendo narrada
+  const c = el('studioThumb'), g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+  const im = entry.img, k = Math.min(c.width / im.width, c.height / im.height);
+  g.drawImage(im, (c.width - im.width * k) / 2, (c.height - im.height * k) / 2, im.width * k, im.height * k);
+  // se o texto está vazio mas existe um salvo de antes, oferece de volta
+  ST.oldScript = (loadScripts()[i] || '').trim();
+  el('scriptRestore').onclick = () => {
+    box.value = ST.oldScript; commitScript(); syncRestoreBtn(); box.focus();
   };
-  micRecorder.start();
-  setStatus('Gravando a narração da cena ' + (i + 1) + '… fala à vontade e clica em ⏹ quando terminar.');
+  syncRestoreBtn();
+  setStudioMsg(entry.audio ? 'Esta cena já tem narração de ' + fmtDur(entry.audio.duration) + '. Gravar de novo substitui a anterior.' : '');
+  renderStudio();
+  setTimeout(() => { if (!box.value.trim()) box.focus(); }, 40);
+}
+
+async function closeStudio() {
+  if (!ST.open) return;
+  // fechar no meio da gravação não joga nada fora: fecha o trecho e salva
+  if (ST.mode === 'rec' || ST.mode === 'paused') { await finishRec(true); }
+  commitScript();
+  stopScroll();
+  releaseMic();
+  ST.open = false; ST.mode = 'idle'; ST.segs = [];
+  el('narrStudio').hidden = true;
+  el('narrStudio').className = 'studio';
+  document.body.style.overflow = '';
   renderSceneList();
 }
+
+function gotoScene(delta) {
+  const j = ST.scene + delta;
+  if (j < 0 || j >= sceneImages.length) return;
+  commitScript();
+  stopScroll();
+  renderSceneList();
+  openStudio(j);
+}
+
+// ---- microfone ----
+async function ensureMic() {
+  if (ST.stream && ST.stream.active) return true;
+  try {
+    ST.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+  } catch (e) {
+    setStudioMsg('Não consegui acessar o microfone — verifica a permissão do navegador. 🎤', true);
+    return false;
+  }
+  // medidor de volume (só pra você ver que o microfone está pegando)
+  try {
+    const a = getAudioCtx();
+    ST.srcNode = a.createMediaStreamSource(ST.stream);
+    ST.analyser = a.createAnalyser();
+    ST.analyser.fftSize = 512;
+    ST.srcNode.connect(ST.analyser);   // não liga na saída: evita microfonia
+    meterLoop();
+  } catch (e) {}
+  return true;
+}
+function releaseMic() {
+  if (ST.meterRaf) cancelAnimationFrame(ST.meterRaf);
+  ST.meterRaf = null;
+  try { if (ST.srcNode) ST.srcNode.disconnect(); } catch (e) {}
+  ST.srcNode = null; ST.analyser = null;
+  if (ST.stream) ST.stream.getTracks().forEach(t => t.stop());
+  ST.stream = null;
+  el('recMeter').firstElementChild.style.width = '0%';
+}
+function meterLoop() {
+  if (!ST.analyser) return;
+  const buf = new Uint8Array(ST.analyser.fftSize);
+  const bar = el('recMeter').firstElementChild;
+  const step = () => {
+    if (!ST.analyser) return;
+    ST.analyser.getByteTimeDomainData(buf);
+    let peak = 0;
+    for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i] - 128));
+    bar.style.width = Math.min(100, (peak / 70) * 100).toFixed(0) + '%';
+    ST.meterRaf = requestAnimationFrame(step);
+  };
+  step();
+}
+
+// ---- trechos de gravação ----
+function startSegment() {
+  ST.chunks = [];
+  let mime = '';
+  ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].some(m => {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) { mime = m; return true; }
+    return false;
+  });
+  ST.rec = mime ? new MediaRecorder(ST.stream, { mimeType: mime }) : new MediaRecorder(ST.stream);
+  ST.rec.ondataavailable = e => { if (e.data.size) ST.chunks.push(e.data); };
+  ST.rec.start();
+  ST.segStart = performance.now();
+  ST.segScroll = el('promptBox').scrollTop;
+}
+function stopSegment() {
+  return new Promise(resolve => {
+    const r = ST.rec;
+    if (!r || r.state === 'inactive') return resolve(null);
+    r.onstop = () => resolve(new Blob(ST.chunks, { type: r.mimeType || 'audio/webm' }));
+    try { r.stop(); } catch (e) { resolve(null); }
+  });
+}
+async function closeSegment() {
+  const blob = await stopSegment();
+  ST.rec = null;
+  if (!blob || !blob.size) return;
+  try {
+    const buffer = await getAudioCtx().decodeAudioData(await blob.arrayBuffer());
+    ST.segs.push({ buffer, scroll: ST.segScroll });
+  } catch (e) {
+    setStudioMsg('Um trecho não pôde ser processado — grava esse pedaço de novo.', true);
+  }
+}
+const segsDur = () => ST.segs.reduce((n, s) => n + s.buffer.duration, 0);
+
+// ---- botões ----
+async function toggleRec() {
+  if (ST.mode === 'busy') return;
+  if (ST.mode === 'rec') {                      // pausar
+    ST.mode = 'busy'; renderStudio();
+    stopScroll();
+    await closeSegment();
+    ST.mode = 'paused';
+    setStudioMsg('Pausado em ' + fmtClock(segsDur()) + '. Quando quiser, clica em Retomar — a gravação continua daqui.');
+    renderStudio();
+    return;
+  }
+  // gravar / retomar
+  if (!(await ensureMic())) return;
+  commitScript();
+  if (!el('promptBox').value.trim()) setStudioMsg('Sem texto escrito o teleprompter fica parado — mas a gravação funciona igual. 🎙');
+  else setStudioMsg(ST.segs.length ? 'Gravando de novo — continuando de onde parou.' : 'Gravando… lê no seu ritmo; dá pra pausar a hora que quiser.');
+  el('promptBox').readOnly = true;
+  el('promptBox').blur();
+  startSegment();
+  ST.mode = 'rec';
+  startScroll();
+  renderStudio();
+}
+
+async function finishRec(silencioso) {
+  if (ST.mode === 'rec') { ST.mode = 'busy'; renderStudio(); await closeSegment(); }
+  stopScroll();
+  el('promptBox').readOnly = false;
+  const bufs = ST.segs.map(s => s.buffer);
+  ST.segs = []; ST.mode = 'idle';
+  const buf = concatBuffers(bufs);
+  if (buf && sceneImages[ST.scene]) {
+    sceneImages[ST.scene].audio = { buffer: buf, duration: buf.duration };
+    if (!silencioso) {
+      setStudioMsg('Narração salva: ' + fmtDur(buf.duration) + ' em ' + bufs.length + (bufs.length > 1 ? ' trechos emendados' : ' trecho') + '. A cena vai durar exatamente esse tempo. ✅');
+      setStatus('Narração da cena ' + (ST.scene + 1) + ' gravada (' + fmtDur(buf.duration) + '). A cena vai durar o tempo da fala, e a voz sai no vídeo final. 🎙');
+    }
+  }
+  renderStudio();
+  renderSceneList();
+}
+
+async function undoSeg() {
+  if (ST.mode === 'rec') { ST.mode = 'busy'; renderStudio(); await closeSegment(); ST.mode = 'paused'; }
+  const s = ST.segs.pop();
+  stopScroll();
+  if (s) {
+    el('promptBox').scrollTop = s.scroll;
+    ST.scrollPos = s.scroll; ST.lastSet = -1;
+  }
+  if (!ST.segs.length) { ST.mode = 'idle'; el('promptBox').readOnly = false; }
+  setStudioMsg(ST.segs.length
+    ? 'Último trecho apagado — sobrou ' + fmtClock(segsDur()) + '. O texto voltou pro ponto em que aquele trecho começou.'
+    : 'Tudo apagado. Pode começar de novo quando quiser.');
+  renderStudio();
+}
+
+// ---- teleprompter (rolagem automática do texto) ----
+const promptSpeed = () => {
+  const lvl = +el('promptSpeed').value;
+  if (lvl <= 0) return 0;
+  return (0.06 + lvl * 0.06) * ST.fsize * 1.55;  // linhas por segundo × altura da linha
+};
+function startScroll() {
+  if (ST.scrolling) return;
+  ST.scrolling = true;
+  ST.scrollPos = el('promptBox').scrollTop;
+  ST.lastSet = ST.scrollPos;
+  ST.lastT = performance.now();
+  el('narrStudio').classList.add('reading');
+  // um timer (e não requestAnimationFrame) porque o texto precisa continuar
+  // subindo mesmo se a janela do app não estiver na frente
+  const step = () => {
+    if (!ST.scrolling) return;
+    const box = el('promptBox');
+    // se você rolou na mão, a rolagem automática continua de onde você deixou
+    if (ST.lastSet >= 0 && Math.abs(box.scrollTop - ST.lastSet) > 1.5) ST.scrollPos = box.scrollTop;
+    const now = performance.now();
+    const dt = Math.min(0.5, (now - ST.lastT) / 1000);
+    ST.lastT = now;
+    ST.scrollPos = Math.min(box.scrollHeight - box.clientHeight, ST.scrollPos + promptSpeed() * dt);
+    box.scrollTop = ST.scrollPos;
+    ST.lastSet = box.scrollTop;
+  };
+  ST.raf = setInterval(step, 33);
+}
+function stopScroll() {
+  ST.scrolling = false;
+  if (ST.raf) clearInterval(ST.raf);
+  ST.raf = null;
+  if (ST.mode !== 'rec') el('narrStudio').classList.remove('reading');
+  el('rehearseBtn').textContent = 'ensaiar a leitura';
+}
+function toggleRehearse() {
+  if (ST.mode === 'rec') return;
+  if (ST.scrolling) { stopScroll(); setStudioMsg('Ensaio parado.'); return; }
+  el('promptBox').blur();
+  startScroll();
+  el('rehearseBtn').textContent = 'parar o ensaio';
+  setStudioMsg('Ensaiando (sem gravar): ajusta a velocidade até ficar confortável de ler.');
+}
+function nudgeScroll(dir) {
+  const box = el('promptBox');
+  box.scrollTop = Math.max(0, box.scrollTop + dir * ST.fsize * 1.55);
+  ST.scrollPos = box.scrollTop; ST.lastSet = box.scrollTop;
+}
+function setFontSize(px) {
+  ST.fsize = Math.max(18, Math.min(56, px));
+  el('narrStudio').querySelector('.studiobox').style.setProperty('--psize', ST.fsize + 'px');
+}
+
+// ---- desenha o estado do estúdio na tela ----
+function renderStudio() {
+  if (!ST.open) return;
+  const entry = sceneImages[ST.scene] || {};
+  const rec = ST.mode === 'rec', paused = ST.mode === 'paused', busy = ST.mode === 'busy';
+  el('studioTitle').textContent = 'Narração da cena ' + (ST.scene + 1) + (sceneImages.length > 1 ? ' de ' + sceneImages.length : '');
+  el('studioSub').textContent = rec ? 'gravando — lê no seu ritmo' : (paused ? 'pausado — dá pra retomar daqui' : 'escreva o texto e leia enquanto grava');
+  el('narrStudio').className = 'studio' + (rec ? ' rec' : '') + ((rec || paused) ? ' reading' : '');
+  el('recBtn').className = 'recbtn' + (rec ? ' pausing' : '');
+  el('recBtn').disabled = busy;
+  el('recLabel').textContent = rec ? 'Pausar' : (paused ? 'Retomar' : (entry.audio ? 'Gravar de novo' : 'Gravar'));
+  el('recBtn').querySelector('use').setAttribute('href', rec ? '#i-pause' : '#i-rec');
+  el('doneBtn').style.display = (rec || paused) ? 'flex' : 'none';
+  el('doneBtn').disabled = busy;
+  el('undoSegBtn').style.display = ST.segs.length ? 'flex' : 'none';
+  el('playSavedBtn').style.display = (!rec && !paused && entry.audio) ? 'flex' : 'none';
+  el('clearSavedBtn').style.display = (!rec && !paused && entry.audio) ? 'flex' : 'none';
+  el('studioPrev').disabled = rec || paused || busy || ST.scene <= 0;
+  el('studioNext').disabled = rec || paused || busy || ST.scene >= sceneImages.length - 1;
+  el('rehearseBtn').style.display = (rec || paused) ? 'none' : 'inline';
+  const t = (rec || paused || ST.segs.length) ? segsDur() : (entry.audio ? entry.audio.duration : 0);
+  el('recTime').textContent = fmtClock(t);
+  syncRestoreBtn();
+}
+// relógio: enquanto grava, soma o trecho em andamento
+setInterval(() => {
+  if (ST.mode !== 'rec') return;
+  el('recTime').textContent = fmtClock(segsDur() + (performance.now() - ST.segStart) / 1000);
+}, 250);
+
+// ---- ligações dos botões ----
+el('recBtn').addEventListener('click', toggleRec);
+el('doneBtn').addEventListener('click', () => finishRec(false));
+el('undoSegBtn').addEventListener('click', undoSeg);
+el('studioClose').addEventListener('click', closeStudio);
+el('studioPrev').addEventListener('click', () => gotoScene(-1));
+el('studioNext').addEventListener('click', () => gotoScene(1));
+el('rehearseBtn').addEventListener('click', toggleRehearse);
+el('promptSmaller').addEventListener('click', () => setFontSize(ST.fsize - 3));
+el('promptBigger').addEventListener('click', () => setFontSize(ST.fsize + 3));
+el('promptBox').addEventListener('input', () => { commitScript(); syncRestoreBtn(); });
+el('playSavedBtn').addEventListener('click', () => {
+  const a = sceneImages[ST.scene] && sceneImages[ST.scene].audio;
+  if (a) { playSceneAudio(a, 0, null); setStudioMsg('Tocando a narração salva (' + fmtDur(a.duration) + ').'); }
+});
+el('clearSavedBtn').addEventListener('click', () => {
+  if (!sceneImages[ST.scene]) return;
+  sceneImages[ST.scene].audio = null;
+  setStudioMsg('Narração apagada. A cena volta a durar os segundos definidos na lista.');
+  renderStudio(); renderSceneList();
+});
+el('narrStudio').addEventListener('click', e => { if (e.target.id === 'narrStudio') closeStudio(); });
+
+// atalhos de teclado (só valem quando você não está digitando o texto)
+document.addEventListener('keydown', e => {
+  if (!ST.open) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeStudio(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  // se o foco está num campo/botão do estúdio, deixa o navegador cuidar da tecla
+  // (senão o espaço apertaria o botão E o atalho, gravando e pausando de uma vez)
+  const foco = document.activeElement;
+  if (foco && foco.closest && foco.closest('#narrStudio') && /^(BUTTON|INPUT|TEXTAREA)$/.test(foco.tagName)) {
+    if (!(foco.id === 'promptBox' && foco.readOnly)) return;
+  }
+  if (e.code === 'Space') { e.preventDefault(); toggleRec(); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (ST.mode === 'rec' || ST.mode === 'paused') finishRec(false); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); nudgeScroll(1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); nudgeScroll(-1); }
+  else if (e.key === '+' || e.key === '=') { el('promptSpeed').value = Math.min(10, +el('promptSpeed').value + 1); }
+  else if (e.key === '-' || e.key === '_') { el('promptSpeed').value = Math.max(0, +el('promptSpeed').value - 1); }
+});
 
 // desenho de exemplo, gerado na hora (substitui a lista)
 el('sampleBtn').addEventListener('click', e => {
