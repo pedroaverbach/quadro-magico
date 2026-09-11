@@ -15,7 +15,9 @@ Cada cena tem um estúdio próprio, com teleprompter e gravação em trechos:
 
 - escreva o texto da fala e ele sobe sozinho na tela enquanto você grava (velocidade e tamanho ajustáveis, com uma faixa marcando a linha de leitura);
 - **pause e retome quantas vezes quiser** — cada pausa fecha um trecho, e no fim todos são emendados num áudio só;
-- "apagar o último trecho" desfaz só o pedaço final e devolve o texto ao ponto em que ele começou;
+- **errou no meio?** a onda do áudio aparece ao pausar: arraste o marcador até o último ponto bom, ouça pra conferir e corte — tudo depois do marcador é apagado, o teleprompter volta sozinho pra frase que você estava lendo naquele segundo, e é só gravar de novo dali;
+- "apagar o último trecho" é o atalho pra desfazer só o pedaço desde a última vez que você apertou gravar;
+- a narração já salva vira o ponto de partida quando você reabre o estúdio: dá pra cortar o fim ruim ou continuar gravando a partir dele;
 - "ensaiar a leitura" roda o teleprompter sem gravar, para calibrar a velocidade;
 - atalhos: espaço grava/pausa, Enter conclui, ↑ ↓ rolam o texto, Esc fecha;
 - a cena dura exatamente o tempo da narração, e os textos escritos ficam salvos no navegador.
@@ -36,7 +38,7 @@ Tudo é JavaScript puro em um único `index.html`:
 - os traços são detectados por limiar de cor e separados em componentes conectados;
 - uma "caneta virtual" percorre cada traço pelo caminho natural (BFS duplo acha a ponta; um disco varre seguindo sempre o trecho não desenhado mais próximo);
 - a animação é desenhada em canvas e gravada com `MediaRecorder` (MP4 com fallback automático para WebM);
-- a narração é gravada em trechos independentes, decodificados em `AudioBuffer` e concatenados — é isso que permite pausar e retomar em qualquer navegador.
+- a narração é gravada em trechos independentes, decodificados em `AudioBuffer` e concatenados — é isso que permite pausar e retomar em qualquer navegador; o corte fatia esse buffer, e um rastro de (segundo → posição do teleprompter) gravado durante a fala devolve o texto ao ponto certo.
 
 ## Rodando localmente
 

@@ -467,6 +467,22 @@
   .promptfade.bot { bottom: 0; top: auto; background: linear-gradient(rgba(253,253,252,0), var(--paper)); }
   #scriptRestore { position: absolute; left: 26px; bottom: 14px; }
 
+  /* faixa do áudio gravado: onda + marcador de corte */
+  .takebar {
+    display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 9px 14px; border-top: 1px solid var(--border); background: #fbfcfe;
+  }
+  .takebar.on { display: flex; }
+  #takeWave {
+    flex: 1; min-width: 150px; height: 54px; display: block;
+    border: 1px solid var(--border); border-radius: 8px; background: #fff;
+    cursor: ew-resize; touch-action: none;
+  }
+  .taketimes { font-family: var(--hand); font-weight: 700; font-size: 1.15rem; color: var(--ink); flex: none; }
+  .taketimes .tot { color: var(--muted); font-size: .95rem; }
+  .takehint { width: 100%; font-size: .78rem; color: var(--muted); line-height: 1.35; }
+  .takehint b { color: var(--red); }
+
   .studiobar {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     padding: 11px 14px; border-top: 1px solid var(--border); background: #fff;
@@ -576,6 +592,7 @@
   <symbol id="i-pause" viewBox="0 0 24 24"><rect x="7" y="5" width="3.6" height="14" rx="1.3"/><rect x="13.4" y="5" width="3.6" height="14" rx="1.3"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-script" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+  <symbol id="i-cut" viewBox="0 0 24 24"><circle cx="6.5" cy="17.5" r="2.6"/><circle cx="17.5" cy="17.5" r="2.6"/><path d="M8.3 15.7L19 4M15.7 15.7L5 4"/></symbol>
 </svg>
 
 <div class="wrap">
@@ -832,6 +849,14 @@
 
     <div id="studioMsg"></div>
 
+    <div class="takebar" id="takeBar">
+      <button class="ghostbtn" id="takePlay" title="ouvir a partir do marcador"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg></button>
+      <canvas id="takeWave"></canvas>
+      <div class="taketimes"><span id="takeCutAt">0:00</span> <span class="tot">/ <span id="takeTotal">0:00</span></span></div>
+      <button class="ghostbtn danger" id="takeCut"><svg class="ic" aria-hidden="true"><use href="#i-cut"/></svg> cortar daqui pra frente</button>
+      <div class="takehint">Errou no meio? Clique ou arraste na onda até <b>o último ponto em que a fala ficou boa</b>, ouça pra conferir, e corte — o que vem depois do marcador some e você regrava a partir dali.</div>
+    </div>
+
     <div class="studiobar">
       <button class="recbtn" id="recBtn"><svg class="ic" aria-hidden="true"><use href="#i-rec"/></svg><span id="recLabel">Gravar</span></button>
       <button class="donebtn" id="doneBtn" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Concluir</button>
@@ -839,8 +864,7 @@
       <div class="meter" id="recMeter"><i></i></div>
       <div class="grow"></div>
       <button class="ghostbtn" id="undoSegBtn" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> apagar o último trecho</button>
-      <button class="ghostbtn" id="playSavedBtn" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> ouvir</button>
-      <button class="ghostbtn danger" id="clearSavedBtn" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-eraser"/></svg> apagar</button>
+      <button class="ghostbtn danger" id="clearSavedBtn" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-eraser"/></svg> apagar tudo</button>
     </div>
 
     <div class="studiofoot">
@@ -1135,7 +1159,11 @@ function renderSceneList() {
 // parar no meio, respirar (ou reler) e continuar de onde parou, sem perder nada.
 const ST = {
   open: false, scene: -1, mode: 'idle',   // idle | rec | paused | busy
-  stream: null, rec: null, chunks: [], segs: [],
+  stream: null, rec: null, chunks: [],
+  take: null,        // tudo que já foi gravado nesta cena, num áudio só
+  segStarts: [],     // em que segundo cada trecho começou (pro "apagar o último")
+  marks: [],         // {t, scroll}: onde o teleprompter estava em cada segundo
+  cutAt: 0, peaks: null, player: null, playTimer: null,
   segStart: 0, segScroll: 0,
   scrolling: false, scrollPos: 0, lastSet: -1, lastT: 0, raf: null, oldScript: '',
   analyser: null, srcNode: null, meterRaf: null, fsize: 30,
@@ -1164,6 +1192,33 @@ function concatBuffers(bufs) {
     off += b.length;
   });
   return out;
+}
+
+// ---- o "take": o áudio acumulado desta cena, que dá pra cortar e continuar ----
+const takeDur = () => (ST.take ? ST.take.duration : 0);
+const liveDur = () => takeDur() + (ST.mode === 'rec' ? (performance.now() - ST.segStart) / 1000 : 0);
+
+function appendTake(buf) {
+  ST.take = ST.take ? concatBuffers([ST.take, buf]) : buf;
+  ST.peaks = null; ST.cutAt = takeDur();
+}
+// joga fora tudo que vem depois do segundo t
+function sliceTake(t) {
+  if (!ST.take) return;
+  if (t <= 0.02) { ST.take = null; ST.peaks = null; ST.cutAt = 0; return; }
+  const a = getAudioCtx();
+  const n = Math.max(1, Math.min(ST.take.length, Math.round(t * ST.take.sampleRate)));
+  const out = a.createBuffer(ST.take.numberOfChannels, n, ST.take.sampleRate);
+  for (let c = 0; c < ST.take.numberOfChannels; c++) {
+    out.getChannelData(c).set(ST.take.getChannelData(c).subarray(0, n));
+  }
+  ST.take = out; ST.peaks = null; ST.cutAt = out.duration;
+}
+// onde o teleprompter estava no segundo t (pra voltar o texto junto com o corte)
+function markAt(t) {
+  let best = null;
+  for (const m of ST.marks) { if (m.t <= t) best = m; else break; }
+  return best;
 }
 
 function setStudioMsg(msg, isErr) {
@@ -1195,7 +1250,12 @@ function syncRestoreBtn() {
 function openStudio(i) {
   if (!sceneImages[i]) return;
   ST.open = true; ST.scene = i; ST.mode = 'idle';
-  ST.segs = []; ST.segStart = 0;
+  ST.segStarts = []; ST.marks = []; ST.segStart = 0;
+  stopTake();
+  // a narração que já existe entra como ponto de partida: dá pra cortar um
+  // pedaço dela ou continuar gravando a partir do fim
+  ST.take = (sceneImages[i].audio && sceneImages[i].audio.buffer) || null;
+  ST.peaks = null; ST.cutAt = takeDur();
   el('narrStudio').hidden = false;
   document.body.style.overflow = 'hidden';
   const entry = sceneImages[i];
@@ -1214,7 +1274,9 @@ function openStudio(i) {
     box.value = ST.oldScript; commitScript(); syncRestoreBtn(); box.focus();
   };
   syncRestoreBtn();
-  setStudioMsg(entry.audio ? 'Esta cena já tem narração de ' + fmtDur(entry.audio.duration) + '. Gravar de novo substitui a anterior.' : '');
+  setStudioMsg(entry.audio
+    ? 'Esta cena já tem ' + fmtDur(entry.audio.duration) + ' narrados. Você pode continuar gravando a partir do fim, cortar um pedaço ruim, ou apagar tudo e recomeçar.'
+    : '');
   renderStudio();
   setTimeout(() => { if (!box.value.trim()) box.focus(); }, 40);
 }
@@ -1222,11 +1284,13 @@ function openStudio(i) {
 async function closeStudio() {
   if (!ST.open) return;
   // fechar no meio da gravação não joga nada fora: fecha o trecho e salva
-  if (ST.mode === 'rec' || ST.mode === 'paused') { await finishRec(true); }
+  if (ST.mode === 'rec') { await finishRec(true); }
+  commitTake(true);
   commitScript();
   stopScroll();
+  stopTake();
   releaseMic();
-  ST.open = false; ST.mode = 'idle'; ST.segs = [];
+  ST.open = false; ST.mode = 'idle'; ST.take = null; ST.marks = []; ST.segStarts = [];
   el('narrStudio').hidden = true;
   el('narrStudio').className = 'studio';
   document.body.style.overflow = '';
@@ -1311,6 +1375,7 @@ function startSegment() {
   }
   ST.segStart = performance.now();
   ST.segScroll = el('promptBox').scrollTop;
+  ST.segStarts.push(takeDur());
   return true;
 }
 function stopSegment() {
@@ -1326,13 +1391,11 @@ async function closeSegment() {
   ST.rec = null;
   if (!blob || !blob.size) return;
   try {
-    const buffer = await getAudioCtx().decodeAudioData(await blob.arrayBuffer());
-    ST.segs.push({ buffer, scroll: ST.segScroll });
+    appendTake(await getAudioCtx().decodeAudioData(await blob.arrayBuffer()));
   } catch (e) {
     setStudioMsg('Um trecho não pôde ser processado — grava esse pedaço de novo.', true);
   }
 }
-const segsDur = () => ST.segs.reduce((n, s) => n + s.buffer.duration, 0);
 
 // ---- botões ----
 async function toggleRec() {
@@ -1342,7 +1405,7 @@ async function toggleRec() {
     stopScroll();
     await closeSegment();
     ST.mode = 'paused';
-    setStudioMsg('Pausado em ' + fmtClock(segsDur()) + '. Quando quiser, clica em Retomar — a gravação continua daqui.');
+    setStudioMsg('Pausado em ' + fmtClock(takeDur()) + '. Retomar continua daqui; se errou alguma coisa, corta na onda aí embaixo e regrava do ponto certo.');
     renderStudio();
     return;
   }
@@ -1350,7 +1413,7 @@ async function toggleRec() {
   if (!(await ensureMic())) return;
   commitScript();
   if (!el('promptBox').value.trim()) setStudioMsg('Sem texto escrito o teleprompter fica parado — mas a gravação funciona igual. 🎙');
-  else setStudioMsg(ST.segs.length ? 'Gravando de novo — continuando de onde parou.' : 'Gravando… lê no seu ritmo; dá pra pausar a hora que quiser.');
+  else setStudioMsg(ST.take ? 'Gravando — continuando de onde parou.' : 'Gravando… lê no seu ritmo; dá pra pausar a hora que quiser.');
   el('promptBox').readOnly = true;
   el('promptBox').blur();
   if (!startSegment()) { el('promptBox').readOnly = false; renderStudio(); return; }
@@ -1359,36 +1422,39 @@ async function toggleRec() {
   renderStudio();
 }
 
+// grava o take no cartão da cena
+function commitTake(silencioso) {
+  const entry = sceneImages[ST.scene];
+  if (!entry) return;
+  const antes = entry.audio ? entry.audio.duration : -1;
+  entry.audio = ST.take ? { buffer: ST.take, duration: ST.take.duration } : null;
+  if (silencioso) return;
+  if (ST.take) {
+    setStudioMsg('Narração salva: ' + fmtDur(ST.take.duration) + '. A cena vai durar exatamente esse tempo. ✅');
+    setStatus('Narração da cena ' + (ST.scene + 1) + ' gravada (' + fmtDur(ST.take.duration) + '). A cena vai durar o tempo da fala, e a voz sai no vídeo final. 🎙');
+  } else if (antes >= 0) {
+    setStatus('Narração da cena ' + (ST.scene + 1) + ' apagada.');
+  }
+}
+
 async function finishRec(silencioso) {
   if (ST.mode === 'rec') { ST.mode = 'busy'; renderStudio(); await closeSegment(); }
   stopScroll();
   el('promptBox').readOnly = false;
-  const bufs = ST.segs.map(s => s.buffer);
-  ST.segs = []; ST.mode = 'idle';
-  const buf = concatBuffers(bufs);
-  if (buf && sceneImages[ST.scene]) {
-    sceneImages[ST.scene].audio = { buffer: buf, duration: buf.duration };
-    if (!silencioso) {
-      setStudioMsg('Narração salva: ' + fmtDur(buf.duration) + ' em ' + bufs.length + (bufs.length > 1 ? ' trechos emendados' : ' trecho') + '. A cena vai durar exatamente esse tempo. ✅');
-      setStatus('Narração da cena ' + (ST.scene + 1) + ' gravada (' + fmtDur(buf.duration) + '). A cena vai durar o tempo da fala, e a voz sai no vídeo final. 🎙');
-    }
-  }
+  ST.mode = 'idle';
+  commitTake(silencioso);
   renderStudio();
   renderSceneList();
 }
 
+// atalho: apaga tudo desde a última vez que você apertou gravar
 async function undoSeg() {
   if (ST.mode === 'rec') { ST.mode = 'busy'; renderStudio(); await closeSegment(); ST.mode = 'paused'; }
-  const s = ST.segs.pop();
   stopScroll();
-  if (s) {
-    el('promptBox').scrollTop = s.scroll;
-    ST.scrollPos = s.scroll; ST.lastSet = -1;
-  }
-  if (!ST.segs.length) { ST.mode = 'idle'; el('promptBox').readOnly = false; }
-  setStudioMsg(ST.segs.length
-    ? 'Último trecho apagado — sobrou ' + fmtClock(segsDur()) + '. O texto voltou pro ponto em que aquele trecho começou.'
-    : 'Tudo apagado. Pode começar de novo quando quiser.');
+  const t = ST.segStarts.length ? ST.segStarts[ST.segStarts.length - 1] : 0;
+  ST.segStarts.pop();
+  applyCut(t, 'undo');
+  if (!ST.take) { ST.mode = 'idle'; el('promptBox').readOnly = false; }
   renderStudio();
 }
 
@@ -1446,6 +1512,139 @@ function setFontSize(px) {
   el('narrStudio').querySelector('.studiobox').style.setProperty('--psize', ST.fsize + 'px');
 }
 
+// ---- onda do áudio, marcador e corte ----
+// A onda mostra o volume ao longo do tempo. O marcador diz até onde a gravação
+// fica; tudo que estiver depois dele é o que o corte joga fora.
+function buildPeaks(n) {
+  if (!ST.take) { ST.peaks = null; return; }
+  const data = ST.take.getChannelData(0);
+  const p = new Float32Array(n);
+  const step = data.length / n;
+  for (let i = 0; i < n; i++) {
+    const ini = Math.floor(i * step), fim = Math.min(data.length, Math.floor((i + 1) * step));
+    const salto = Math.max(1, Math.floor((fim - ini) / 160));
+    let mx = 0;
+    for (let j = ini; j < fim; j += salto) { const v = Math.abs(data[j]); if (v > mx) mx = v; }
+    p[i] = mx;
+  }
+  ST.peaks = p;
+}
+function playheadTime() {
+  if (!ST.player) return null;
+  return ST.player.from + (getAudioCtx().currentTime - ST.player.t0);
+}
+function drawWave() {
+  const c = el('takeWave');
+  if (!c || !c.clientWidth) return;
+  const w = c.clientWidth, h = 54, dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); ST.peaks = null; }
+  if (!ST.peaks || ST.peaks.length !== w) buildPeaks(w);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  if (!ST.peaks) return;
+  const d = takeDur() || 1;
+  const cutX = Math.max(0, Math.min(w, (ST.cutAt / d) * w));
+  const mid = h / 2;
+  for (let i = 0; i < w; i++) {
+    const a = Math.max(1.2, ST.peaks[i] * (h * 0.44));
+    g.fillStyle = i <= cutX ? '#2563eb' : '#d7dce4';   // azul: fica. cinza: vai embora
+    g.fillRect(i, mid - a, 1, a * 2);
+  }
+  const ph = playheadTime();
+  if (ph !== null && ph >= 0 && ph <= d) {
+    g.fillStyle = 'rgba(22,163,74,.85)';
+    g.fillRect((ph / d) * w, 0, 1.5, h);
+  }
+  if (ST.cutAt < d - 0.001) {   // marcador só aparece quando há algo a cortar
+    g.fillStyle = '#e11d48';
+    g.fillRect(cutX - 1, 0, 2, h);
+    g.beginPath(); g.moveTo(cutX - 6, 0); g.lineTo(cutX + 6, 0); g.lineTo(cutX, 8); g.closePath(); g.fill();
+  }
+}
+function renderTakeBar() {
+  const on = !!ST.take && ST.mode !== 'rec' && ST.mode !== 'busy';
+  el('takeBar').classList.toggle('on', on);
+  if (!on) return;
+  el('takeCutAt').textContent = fmtClock(ST.cutAt);
+  el('takeTotal').textContent = fmtClock(takeDur());
+  el('takeCut').disabled = ST.cutAt >= takeDur() - 0.02;
+  drawWave();
+}
+function playTake() {
+  if (!ST.take) return;
+  if (ST.player) { stopTake(); return; }
+  const a = getAudioCtx();
+  const src = a.createBufferSource();
+  src.buffer = ST.take;
+  src.connect(a.destination);
+  const from = Math.max(0, Math.min(ST.cutAt, ST.take.duration - 0.02));
+  src.start(0, from);
+  ST.player = { src, t0: a.currentTime, from };
+  src.onended = () => { if (ST.player && ST.player.src === src) stopTake(); };
+  ST.playTimer = setInterval(drawWave, 60);
+  el('takePlay').querySelector('use').setAttribute('href', '#i-stop');
+}
+function stopTake() {
+  if (ST.player) { try { ST.player.src.onended = null; ST.player.src.stop(); } catch (e) {} ST.player = null; }
+  if (ST.playTimer) { clearInterval(ST.playTimer); ST.playTimer = null; }
+  const b = el('takePlay');
+  if (b) b.querySelector('use').setAttribute('href', '#i-play');
+  drawWave();
+}
+// corta de verdade e leva o teleprompter de volta junto
+function applyCut(t, modo) {
+  const antes = takeDur();
+  stopTake();
+  sliceTake(t);
+  const apagado = antes - takeDur();
+  ST.segStarts = ST.segStarts.filter(x => x < takeDur() - 0.01);
+  const m = markAt(takeDur());
+  ST.marks = ST.marks.filter(x => x.t <= takeDur());
+  if (m) {
+    el('promptBox').scrollTop = m.scroll;
+    ST.scrollPos = m.scroll; ST.lastSet = -1;
+  }
+  setStudioMsg(!ST.take
+    ? 'Tudo apagado. Pode começar de novo quando quiser.'
+    : (modo === 'undo'
+        ? 'Apaguei o último trecho (' + fmtDur(apagado) + ') — sobrou ' + fmtClock(takeDur()) + '.'
+        : 'Cortei em ' + fmtClock(takeDur()) + ' — joguei fora ' + fmtDur(apagado) + ' do fim.')
+      + (m ? ' O texto voltou pro ponto em que você estava.' : '')
+      + ' Aperta o botão vermelho pra gravar de novo a partir daqui.');
+}
+function cutTake() {
+  if (!ST.take) return;
+  if (ST.cutAt >= takeDur() - 0.02) {
+    setStudioMsg('O marcador está no fim — arrasta ele pra trás, até o último ponto em que a fala ficou boa.', true);
+    return;
+  }
+  applyCut(ST.cutAt, 'corte');
+  if (ST.mode === 'paused' && !ST.take) { ST.mode = 'idle'; el('promptBox').readOnly = false; }
+  renderStudio();
+}
+// arrastar o marcador na onda
+(function () {
+  const c = el('takeWave');
+  let arrastando = false;
+  const setCut = e => {
+    if (!ST.take) return;
+    const r = c.getBoundingClientRect();
+    ST.cutAt = Math.max(0, Math.min(takeDur(), ((e.clientX - r.left) / r.width) * takeDur()));
+    renderTakeBar();
+  };
+  c.addEventListener('pointerdown', e => {
+    e.preventDefault(); arrastando = true; stopTake();
+    try { c.setPointerCapture(e.pointerId); } catch (err) {}
+    setCut(e);
+  });
+  c.addEventListener('pointermove', e => { if (arrastando) setCut(e); });
+  const fim = () => { arrastando = false; };
+  c.addEventListener('pointerup', fim);
+  c.addEventListener('pointercancel', fim);
+})();
+window.addEventListener('resize', () => { if (ST.open) renderTakeBar(); });
+
 // ---- desenha o estado do estúdio na tela ----
 function renderStudio() {
   if (!ST.open) return;
@@ -1456,24 +1655,24 @@ function renderStudio() {
   el('narrStudio').className = 'studio' + (rec ? ' rec' : '') + ((rec || paused) ? ' reading' : '');
   el('recBtn').className = 'recbtn' + (rec ? ' pausing' : '');
   el('recBtn').disabled = busy;
-  el('recLabel').textContent = rec ? 'Pausar' : (paused ? 'Retomar' : (entry.audio ? 'Gravar de novo' : 'Gravar'));
+  el('recLabel').textContent = rec ? 'Pausar' : (paused ? 'Retomar' : (ST.take ? 'Continuar gravando' : 'Gravar'));
   el('recBtn').querySelector('use').setAttribute('href', rec ? '#i-pause' : '#i-rec');
-  el('doneBtn').style.display = (rec || paused) ? 'flex' : 'none';
+  el('doneBtn').style.display = (rec || paused || ST.take) ? 'flex' : 'none';
   el('doneBtn').disabled = busy;
-  el('undoSegBtn').style.display = ST.segs.length ? 'flex' : 'none';
-  el('playSavedBtn').style.display = (!rec && !paused && entry.audio) ? 'flex' : 'none';
-  el('clearSavedBtn').style.display = (!rec && !paused && entry.audio) ? 'flex' : 'none';
+  el('undoSegBtn').style.display = (!rec && ST.segStarts.length) ? 'flex' : 'none';
+  el('clearSavedBtn').style.display = (!rec && !busy && ST.take) ? 'flex' : 'none';
   el('studioPrev').disabled = rec || paused || busy || ST.scene <= 0;
   el('studioNext').disabled = rec || paused || busy || ST.scene >= sceneImages.length - 1;
   el('rehearseBtn').style.display = (rec || paused) ? 'none' : 'inline';
-  const t = (rec || paused || ST.segs.length) ? segsDur() : (entry.audio ? entry.audio.duration : 0);
-  el('recTime').textContent = fmtClock(t);
+  el('recTime').textContent = fmtClock(liveDur());
   syncRestoreBtn();
+  renderTakeBar();
 }
-// relógio: enquanto grava, soma o trecho em andamento
+// relógio e rastro do teleprompter: 4 vezes por segundo enquanto grava
 setInterval(() => {
   if (ST.mode !== 'rec') return;
-  el('recTime').textContent = fmtClock(segsDur() + (performance.now() - ST.segStart) / 1000);
+  el('recTime').textContent = fmtClock(liveDur());
+  if (ST.marks.length < 20000) ST.marks.push({ t: liveDur(), scroll: el('promptBox').scrollTop });
 }, 250);
 
 // ---- ligações dos botões ----
@@ -1487,12 +1686,12 @@ el('rehearseBtn').addEventListener('click', toggleRehearse);
 el('promptSmaller').addEventListener('click', () => setFontSize(ST.fsize - 3));
 el('promptBigger').addEventListener('click', () => setFontSize(ST.fsize + 3));
 el('promptBox').addEventListener('input', () => { commitScript(); syncRestoreBtn(); });
-el('playSavedBtn').addEventListener('click', () => {
-  const a = sceneImages[ST.scene] && sceneImages[ST.scene].audio;
-  if (a) { playSceneAudio(a, 0, null); setStudioMsg('Tocando a narração salva (' + fmtDur(a.duration) + ').'); }
-});
+el('takePlay').addEventListener('click', playTake);
+el('takeCut').addEventListener('click', cutTake);
 el('clearSavedBtn').addEventListener('click', () => {
   if (!sceneImages[ST.scene]) return;
+  stopTake();
+  ST.take = null; ST.peaks = null; ST.cutAt = 0; ST.marks = []; ST.segStarts = [];
   sceneImages[ST.scene].audio = null;
   setStudioMsg('Narração apagada. A cena volta a durar os segundos definidos na lista.');
   renderStudio(); renderSceneList();
