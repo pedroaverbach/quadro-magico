@@ -203,6 +203,8 @@
     padding: 7px 12px; font-size: .85rem; font-weight: 700; color: var(--muted);
   }
   .chip[aria-pressed="true"] { border-color: var(--blue); color: var(--blue); background: #eff4ff; }
+  .chip .ic { width: 19px; height: 19px; vertical-align: -5px; }
+  .chips + .chips { margin-top: 7px; }
   select, .field input[type="number"] {
     font-family: var(--body); font-size: .9rem; color: var(--ink);
     border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; background: #fff;
@@ -468,6 +470,41 @@
   .promptfade.bot { bottom: 0; top: auto; background: linear-gradient(rgba(253,253,252,0), var(--paper)); }
   #scriptRestore { position: absolute; left: 26px; bottom: 14px; }
 
+  /* só voz / voz + vídeo */
+  .modeswitch { display: flex; gap: 4px; flex: none; background: #f1f4f8; border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+  .modeswitch button {
+    border: none; background: none; border-radius: 7px; height: 30px; padding: 0 10px;
+    display: flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 800; color: var(--muted);
+  }
+  .modeswitch button .ic { width: 16px; height: 16px; }
+  .modeswitch button[aria-pressed="true"] { background: #fff; color: var(--blue); box-shadow: 0 1px 3px rgba(27,39,51,.14); }
+  .modeswitch button:hover:not(:disabled):not([aria-pressed="true"]) { color: var(--ink); }
+
+  /* a bolinha da câmera no estúdio: ao vivo (espelhada) ou o que já foi gravado */
+  .camdock {
+    position: absolute; top: 16px; right: 20px; z-index: 2;
+    display: flex; flex-direction: column; align-items: center; gap: 7px; pointer-events: none;
+  }
+  .camdock[hidden] { display: none; }
+  .cambubble {
+    position: relative; width: 128px; height: 128px; border-radius: 50%; overflow: hidden;
+    background: #dfe3ea; border: 4px solid #fff; box-shadow: 0 4px 16px rgba(27,39,51,.24);
+    display: flex; align-items: center; justify-content: center; color: #9aa4b2;
+  }
+  .cambubble .ic { width: 34px; height: 34px; }
+  #camLive, #camTake { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  #camLive { transform: scaleX(-1); }   /* espelho: você se vê como num espelho */
+  #camTake { display: none; }
+  .camdock.take #camTake { display: block; }
+  .camdock.take #camLive { visibility: hidden; }
+  .camtag {
+    font-size: .72rem; font-weight: 800; color: var(--muted); background: #fff;
+    border: 1px solid var(--border); border-radius: 999px; padding: 1px 9px; white-space: nowrap;
+  }
+  .studio.rec .camtag { color: var(--red); border-color: #fecdd3; }
+  .camdock.take .camtag { color: var(--blue); border-color: #bfd3fb; }
+  .studio.video #promptBox { padding-right: 170px; }
+
   /* faixa do áudio gravado: onda + marcador de corte */
   .takebar {
     display: none; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -569,6 +606,12 @@
     .recbtn, .donebtn { padding: 10px 16px; font-size: .92rem; }
     .studiofoot .hint { display: none; }
     .studiofoot input[type="range"] { width: 92px; }
+    .modeswitch button { padding: 0 8px; }
+    .modeswitch button span { display: none; }
+    .camdock { top: 10px; right: 10px; gap: 5px; }
+    .cambubble { width: 76px; height: 76px; border-width: 3px; }
+    .cambubble .ic { width: 24px; height: 24px; }
+    .studio.video #promptBox { padding-right: 98px; }
   }
 </style>
 </head>
@@ -594,6 +637,12 @@
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-script" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
   <symbol id="i-cut" viewBox="0 0 24 24"><circle cx="6.5" cy="17.5" r="2.6"/><circle cx="17.5" cy="17.5" r="2.6"/><path d="M8.3 15.7L19 4M15.7 15.7L5 4"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="2.6"/><path d="M15.5 10.4l5.5-3.2v9.6l-5.5-3.2z"/></symbol>
+  <!-- em qual canto do vídeo fica o seu rosto -->
+  <symbol id="i-cbl" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><circle cx="7.6" cy="14.4" r="2.7" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-cbr" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><circle cx="16.4" cy="14.4" r="2.7" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-ctl" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><circle cx="7.6" cy="9.6" r="2.7" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-ctr" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><circle cx="16.4" cy="9.6" r="2.7" fill="currentColor" stroke="none"/></symbol>
 </svg>
 
 <div class="wrap">
@@ -627,7 +676,7 @@
           <button class="samplebtn" id="sampleBtn">✨ Testar com um desenho de exemplo</button>
         </div>
       </div>
-      <div class="postit" id="sceneHint" style="display:none">Arraste um cartão pra trocar a ordem; o microfone abre o estúdio — você escreve o texto, lê no teleprompter e grava (dá pra pausar) 🎙</div>
+      <div class="postit" id="sceneHint" style="display:none">Arraste um cartão pra trocar a ordem; o microfone abre o estúdio — você escreve o texto, lê no teleprompter e grava só a voz ou voz + vídeo (dá pra pausar) 🎙</div>
     </div>
     <input type="file" id="fileInput" accept="image/*" multiple>
   </section>
@@ -691,6 +740,20 @@
               <label class="toggle"><input type="checkbox" id="showHand" checked> <span>mostrar a mão no vídeo</span></label>
               <button class="linkbtn" id="handCustomize" type="button">Personalizar mão</button>
             </div>
+          </div>
+        </div>
+        <div class="field">
+          <span class="flabel" title="vale pras cenas narradas em &quot;voz + vídeo&quot;">Seu rosto no vídeo</span>
+          <div class="chips" role="group" aria-label="Canto do vídeo onde o seu rosto aparece">
+            <button class="chip" data-cam-corner="bl" aria-pressed="true" title="embaixo, à esquerda"><svg class="ic" aria-hidden="true"><use href="#i-cbl"/></svg></button>
+            <button class="chip" data-cam-corner="br" aria-pressed="false" title="embaixo, à direita"><svg class="ic" aria-hidden="true"><use href="#i-cbr"/></svg></button>
+            <button class="chip" data-cam-corner="tl" aria-pressed="false" title="em cima, à esquerda"><svg class="ic" aria-hidden="true"><use href="#i-ctl"/></svg></button>
+            <button class="chip" data-cam-corner="tr" aria-pressed="false" title="em cima, à direita"><svg class="ic" aria-hidden="true"><use href="#i-ctr"/></svg></button>
+          </div>
+          <div class="chips" role="group" aria-label="Tamanho da bolinha com o seu rosto">
+            <button class="chip" data-cam-size="p" aria-pressed="false" title="bolinha pequena">P</button>
+            <button class="chip" data-cam-size="m" aria-pressed="true" title="bolinha média">M</button>
+            <button class="chip" data-cam-size="g" aria-pressed="false" title="bolinha grande">G</button>
           </div>
         </div>
       </div>
@@ -836,6 +899,10 @@
         <h3 id="studioTitle">Narração da cena 1</h3>
         <div class="sub" id="studioSub">escreva o texto e leia enquanto grava</div>
       </div>
+      <div class="modeswitch" role="group" aria-label="O que gravar">
+        <button id="modeVoice" aria-pressed="true" title="gravar só a voz"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg><span>só voz</span></button>
+        <button id="modeVideo" aria-pressed="false" title="gravar a voz e o seu rosto (aparece numa bolinha no canto do vídeo)"><svg class="ic" aria-hidden="true"><use href="#i-cam"/></svg><span>voz + vídeo</span></button>
+      </div>
       <button class="ghostbtn next" id="studioNext" title="próxima cena"><svg class="ic" aria-hidden="true"><use href="#i-chev"/></svg></button>
       <button class="ghostbtn" id="studioClose" title="fechar (Esc)"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
     </div>
@@ -845,6 +912,14 @@
       <div class="promptguide" aria-hidden="true"></div>
       <div class="promptfade" aria-hidden="true"></div>
       <div class="promptfade bot" aria-hidden="true"></div>
+      <div class="camdock" id="camDock" hidden>
+        <div class="cambubble">
+          <svg class="ic" aria-hidden="true"><use href="#i-cam"/></svg>
+          <video id="camLive" muted playsinline autoplay></video>
+          <canvas id="camTake" width="360" height="360"></canvas>
+        </div>
+        <span class="camtag" id="camTag">câmera desligada</span>
+      </div>
       <button class="ghostbtn" id="scriptRestore" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-script"/></svg> usar o texto que você escreveu antes</button>
     </div>
 
@@ -946,6 +1021,161 @@ function playSceneAudio(audio, offsetSec, extraDest) {
   src.start(0, Math.max(0, Math.min(offsetSec || 0, audio.duration - 0.01)));
   activeAudioSources.push(src);
 }
+// atraso do som até sair na caixa/fone (Bluetooth chega a 0,2s): na prévia a
+// imagem espera o som, pra boca e voz baterem. No arquivo gravado não há atraso.
+function outLatency() {
+  const a = audioCtx;
+  return a ? Math.min(0.4, (a.outputLatency || 0) + (a.baseLatency || 0)) : 0;
+}
+
+// ---------- seu rosto na narração (vídeo numa bolinha no canto) ----------
+// A câmera é gravada como uma sequência de fotinhos (JPEG), cada uma com o
+// segundo em que foi tirada, na mesma linha do tempo do áudio. Assim cortar,
+// emendar e continuar funciona no vídeo exatamente como já funciona na voz.
+const CAM_PX = 360;                             // resolução de cada quadro
+const CAM_SIZES = { p: 0.2, m: 0.26, g: 0.34 }; // diâmetro, em fração do lado menor do vídeo
+const CAM_KEY = 'quadroMagicoRosto';
+const camStyle = { corner: 'bl', size: 'm' };
+try {
+  const s = JSON.parse(localStorage.getItem(CAM_KEY));
+  if (s && /^[bt][lr]$/.test(s.corner)) camStyle.corner = s.corner;
+  if (s && CAM_SIZES[s.size]) camStyle.size = s.size;
+} catch (e) {}
+
+const sceneHasFace = i => {
+  const en = sceneImages[i];
+  return !!(en && en.audio && en.video && en.video.frames.length);
+};
+
+// onde a bolinha fica: dentro da área útil (no Reels, fora do que a interface cobre)
+function bubbleGeom(W, H) {
+  const sa = safeArea(W, H);
+  const d = Math.round(Math.min(W, H) * (CAM_SIZES[camStyle.size] || CAM_SIZES.m));
+  const m = Math.round(Math.min(W, H) * 0.03);
+  return {
+    x: camStyle.corner[1] === 'l' ? sa.x + m : sa.x + sa.w - m - d,
+    y: camStyle.corner[0] === 't' ? sa.y + m : sa.y + sa.h - m - d,
+    d,
+  };
+}
+
+// a moldura (sombra + aro branco) é desenhada uma vez só e reaproveitada
+let bubbleDecor = null;
+function bubbleDecorFor(d) {
+  if (bubbleDecor && bubbleDecor.d === d) return bubbleDecor;
+  const pad = Math.ceil(d * 0.16);
+  const c = document.createElement('canvas');
+  c.width = c.height = d + pad * 2;
+  const g = c.getContext('2d');
+  const r = d / 2, cx = pad + r;
+  g.shadowColor = 'rgba(15,23,32,.32)'; g.shadowBlur = d * 0.07; g.shadowOffsetY = d * 0.025;
+  g.fillStyle = '#fff';
+  g.beginPath(); g.arc(cx, cx, r, 0, Math.PI * 2); g.fill();
+  g.shadowColor = 'transparent';
+  g.strokeStyle = 'rgba(27,39,51,.16)'; g.lineWidth = Math.max(1, d * 0.008);
+  g.beginPath(); g.arc(cx, cx, r - g.lineWidth / 2, 0, Math.PI * 2); g.stroke();
+  bubbleDecor = { d, pad, c };
+  return bubbleDecor;
+}
+
+// desenha a bolinha. face = { a: quadro, b: próximo quadro (transição), mix, vis }
+function drawBubble(g, W, H, face) {
+  if (!face || face.vis <= 0.002) return;
+  const bg = bubbleGeom(W, H);
+  const r = bg.d / 2, cx = bg.x + r, cy = bg.y + r;
+  const vis = Math.min(1, face.vis);
+  const s = 0.55 + 0.45 * vis;               // cresce ao entrar, encolhe ao sair
+  const dec = bubbleDecorFor(bg.d);
+  const ri = r - Math.max(3, bg.d * 0.035);  // raio da foto, dentro do aro
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.globalAlpha = vis;
+  g.translate(cx, cy); g.scale(s, s);
+  g.drawImage(dec.c, -r - dec.pad, -r - dec.pad);
+  g.beginPath(); g.arc(0, 0, ri, 0, Math.PI * 2); g.clip();
+  if (face.a || face.b) {
+    if (face.a) g.drawImage(face.a, -ri, -ri, ri * 2, ri * 2);
+    if (face.b && face.mix > 0) { g.globalAlpha = vis * Math.min(1, face.mix); g.drawImage(face.b, -ri, -ri, ri * 2, ri * 2); }
+  } else {
+    g.fillStyle = '#dfe3ea'; g.fillRect(-ri, -ri, ri * 2, ri * 2);
+  }
+  g.restore();
+}
+
+// toca os quadros gravados no tempo certo, decodificando um pouco à frente
+function framePlayer(frames, onReady) {
+  const cache = new Map();   // índice do quadro -> ImageBitmap (null = decodificando)
+  let closed = false;
+  const idxAt = t => {
+    let lo = 0, hi = frames.length - 1, ans = 0;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (frames[mid].t <= t) { ans = mid; lo = mid + 1; } else hi = mid - 1; }
+    return ans;
+  };
+  const want = i => {
+    if (closed || i < 0 || i >= frames.length || cache.has(i)) return;
+    cache.set(i, null);
+    createImageBitmap(frames[i].b).then(bmp => {
+      if (!closed && cache.has(i) && cache.get(i) === null) { cache.set(i, bmp); if (onReady) onReady(i); }
+      else bmp.close();
+    }, () => cache.delete(i));
+  };
+  return {
+    frames,
+    at(t) {
+      if (closed || !frames.length) return null;
+      const i = idxAt(t);
+      for (let k = 0; k < 16; k++) want(i + k);
+      // o quadro certo; se ainda está decodificando, o último pronto antes dele
+      let bi = -1;
+      if (cache.get(i)) bi = i;
+      else for (let k = i - 1; k >= Math.max(0, i - 45); k--) if (cache.get(k)) { bi = k; break; }
+      // descarta o que ficou pra trás (nunca o que está na tela)
+      const keep = (bi >= 0 ? bi : i) - 2;
+      for (const [k, v] of cache) if (k < keep || k > i + 48) { if (v) v.close(); cache.delete(k); }
+      return bi >= 0 ? cache.get(bi) : null;
+    },
+    close() {
+      closed = true;
+      for (const v of cache.values()) if (v) v.close();
+      cache.clear();
+    },
+  };
+}
+let activeFacePlayers = [];
+
+// o rosto no canto da miniatura do cartão da cena (no mesmo canto do vídeo)
+function thumbFace(th, frames, bmp) {
+  const g = th.getContext('2d');
+  const d = Math.round(th.height * 0.42), m = 8;
+  const cx = (camStyle.corner[1] === 'l' ? m : th.width - m - d) + d / 2;
+  const cy = (camStyle.corner[0] === 't' ? m : th.height - m - d) + d / 2;
+  const paint = (b, soFoto) => {
+    g.save();
+    if (!soFoto) {
+      g.shadowColor = 'rgba(15,23,32,.3)'; g.shadowBlur = 6; g.shadowOffsetY = 1;
+      g.fillStyle = '#fff';
+      g.beginPath(); g.arc(cx, cy, d / 2, 0, Math.PI * 2); g.fill();
+      g.shadowColor = 'transparent';
+    }
+    g.beginPath(); g.arc(cx, cy, d / 2 - 3, 0, Math.PI * 2); g.clip();
+    g.drawImage(b, cx - d / 2, cy - d / 2, d, d);
+    g.restore();
+  };
+  if (bmp) return paint(bmp, true);
+  const f = frames[Math.min(frames.length - 1, Math.floor(frames.length * 0.3))];
+  createImageBitmap(f.b).then(b => { paint(b, false); b.close(); }, () => {});
+}
+// "ver e ouvir" no cartão: a miniatura toca o seu rosto junto com a voz
+function playThumbFace(th, entry) {
+  const pl = framePlayer(entry.video.frames);
+  const a = getAudioCtx(), t0 = a.currentTime, dur = entry.audio.duration;
+  const iv = setInterval(() => {
+    const t = a.currentTime - t0 - outLatency();
+    if (t > dur + 0.3 || !th.isConnected) { clearInterval(iv); pl.close(); return; }
+    const bmp = pl.at(Math.max(0, t));
+    if (bmp) thumbFace(th, null, bmp);
+  }, 40);
+}
 
 // ---------- upload (aceita várias imagens) ----------
 const dropzone = el('dropzone');
@@ -1035,6 +1265,8 @@ function renderSceneList() {
     const sc = Math.min(240 / img.width, 170 / img.height);
     g.drawImage(img, (240 - img.width * sc) / 2, (170 - img.height * sc) / 2, img.width * sc, img.height * sc);
     thumbWrap.appendChild(th);
+    // narrada com vídeo: o seu rosto aparece no canto da miniatura, como no vídeo
+    if (sceneHasFace(i)) thumbFace(th, entry.video.frames);
     // selo com o número da ordem — dá pra DIGITAR a posição desejada
     const num = document.createElement('input');
     num.className = 'scenenum';
@@ -1102,9 +1334,10 @@ function renderSceneList() {
     const meta = document.createElement('div');
     meta.className = 'scenemeta' + (entry.audio ? ' narrated' : '');
     if (entry.audio) {
-      meta.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg>';
-      meta.appendChild(document.createTextNode(entry.audio.duration.toFixed(1).replace('.', ',') + 's narrado'));
-      meta.title = 'a duração desta cena segue a narração gravada';
+      const face = sceneHasFace(i);
+      meta.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-' + (face ? 'cam' : 'mic') + '"/></svg>';
+      meta.appendChild(document.createTextNode(entry.audio.duration.toFixed(1).replace('.', ',') + (face ? 's em vídeo' : 's narrado')));
+      meta.title = 'a duração desta cena segue a narração gravada' + (face ? ' (com o seu rosto no canto)' : '');
     } else {
       meta.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>';
       const durInp = document.createElement('input');
@@ -1123,8 +1356,12 @@ function renderSceneList() {
     const acts = document.createElement('div');
     acts.className = 'sceneacts';
     if (entry.audio) {
-      const pl = mkBtn('play', 'ouvir a narração');
-      pl.addEventListener('click', () => playSceneAudio(entry.audio, 0, null));
+      const face = sceneHasFace(i);
+      const pl = mkBtn('play', face ? 'ver e ouvir a narração' : 'ouvir a narração');
+      pl.addEventListener('click', () => {
+        playSceneAudio(entry.audio, 0, null);
+        if (sceneHasFace(i)) playThumbFace(th, entry);
+      });
       acts.appendChild(pl);
     }
     const micBtn = mkBtn('mic', entry.audio ? 'abrir o estúdio (reescrever o texto ou regravar)' : 'abrir o estúdio: escrever o texto e gravar lendo');
@@ -1132,7 +1369,7 @@ function renderSceneList() {
     acts.appendChild(micBtn);
     if (entry.audio) {
       const delA = mkBtn('eraser', 'apagar a narração');
-      delA.addEventListener('click', () => { entry.audio = null; renderSceneList(); });
+      delA.addEventListener('click', () => { entry.audio = null; entry.video = null; renderSceneList(); });
       acts.appendChild(delA);
     }
     const rm = mkBtn('trash', 'remover esta cena', 'danger');
@@ -1153,6 +1390,7 @@ function renderSceneList() {
     }
     box.appendChild(item);
   });
+  updateStyleSummary();   // o resumo do passo 2 mostra o canto do rosto quando há vídeo
 }
 
 // ---------- estúdio de narração: teleprompter + gravação com pausa ----------
@@ -1169,8 +1407,14 @@ const ST = {
   segStart: 0, segScroll: 0,
   scrolling: false, scrollPos: 0, lastSet: -1, lastT: 0, raf: null, oldScript: '',
   analyser: null, srcNode: null, meterRaf: null, fsize: 30,
+  // vídeo (o seu rosto): liga quando a cena é narrada em "voz + vídeo"
+  video: false, cam: null,
+  vframes: [],       // {t, b}: os quadros do take, na linha do tempo do áudio
+  segFrames: null, capturing: false, capCb: null, capTimer: null,
+  vplayer: null, vview: 'live',   // a bolinha mostra a câmera ao vivo ou o que foi gravado
 };
 const SCRIPT_KEY = 'quadroMagicoRoteiros';
+const MODE_KEY = 'quadroMagicoModoNarracao';
 
 const fmtClock = sec => {
   sec = Math.max(0, Math.round(sec));
@@ -1204,9 +1448,18 @@ function appendTake(buf) {
   ST.take = ST.take ? concatBuffers([ST.take, buf]) : buf;
   ST.peaks = null; ST.cutAt = takeDur();
 }
+// os quadros de um trecho entram depois do que já existe (base = onde o
+// trecho começou); o áudio do trecho manda na duração
+function appendFrames(frames, base, dur) {
+  for (const f of frames) {
+    if (f.t > dur + 0.05) continue;
+    ST.vframes.push({ t: base + Math.max(0, Math.min(dur, f.t)), b: f.b });
+  }
+}
 // joga fora tudo que vem depois do segundo t
 function sliceTake(t) {
   if (!ST.take) return;
+  ST.vframes = t <= 0.02 ? [] : ST.vframes.filter(f => f.t <= t);
   if (t <= 0.02) { ST.take = null; ST.peaks = null; ST.cutAt = 0; return; }
   const a = getAudioCtx();
   const n = Math.max(1, Math.min(ST.take.length, Math.round(t * ST.take.sampleRate)));
@@ -1261,6 +1514,14 @@ function openStudio(i) {
   el('narrStudio').hidden = false;
   document.body.style.overflow = 'hidden';
   const entry = sceneImages[i];
+  // voz ou voz + vídeo: segue o que a cena já tem; cena nova usa o último modo escolhido
+  ST.vframes = (entry.video && entry.video.frames.slice()) || [];
+  ST.vview = 'live';
+  if (sceneHasFace(i)) ST.video = true;
+  else if (entry.audio) ST.video = false;
+  else { try { ST.video = localStorage.getItem(MODE_KEY) === 'video'; } catch (e) { ST.video = false; } }
+  if (ST.video) ensureMic();   // liga a câmera já, pra você se ver antes de gravar
+  else camOff();
   const box = el('promptBox');
   box.value = entry.script || '';
   box.readOnly = false;
@@ -1277,7 +1538,7 @@ function openStudio(i) {
   };
   syncRestoreBtn();
   setStudioMsg(entry.audio
-    ? 'Esta cena já tem ' + fmtDur(entry.audio.duration) + ' narrados. Você pode continuar gravando a partir do fim, cortar um pedaço ruim, ou apagar tudo e recomeçar.'
+    ? 'Esta cena já tem ' + fmtDur(entry.audio.duration) + ' narrados' + (sceneHasFace(i) ? ' com vídeo' : '') + '. Você pode continuar gravando a partir do fim, cortar um pedaço ruim, ou apagar tudo e recomeçar.'
     : '');
   renderStudio();
   setTimeout(() => { if (!box.value.trim()) box.focus(); }, 40);
@@ -1293,36 +1554,84 @@ async function closeStudio() {
   stopTake();
   releaseMic();
   ST.open = false; ST.mode = 'idle'; ST.take = null; ST.marks = []; ST.segStarts = [];
+  ST.vframes = []; dropTakePlayer();
   el('narrStudio').hidden = true;
   el('narrStudio').className = 'studio';
   document.body.style.overflow = '';
   renderSceneList();
+  // gravou com vídeo? mostra no palco onde o seu rosto vai aparecer
+  if (sceneHasFace(ST.scene)) showFacePoster(ST.scene);
 }
 
 function gotoScene(delta) {
   const j = ST.scene + delta;
   if (j < 0 || j >= sceneImages.length) return;
+  commitTake(true);   // um corte (ou a troca voz/vídeo) feito aqui não se perde
   commitScript();
   stopScroll();
   renderSceneList();
   openStudio(j);
 }
 
-// ---- microfone ----
+// ---- microfone (e a câmera, no modo voz + vídeo) ----
+const camOn = () => !!(ST.cam && ST.cam.getVideoTracks().some(t => t.readyState === 'live'));
+let gumFlight = null;   // pedido de permissão em andamento (evita pedir duas vezes)
 async function ensureMic() {
   if (!window.MediaRecorder || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     setStudioMsg('Este navegador não consegue gravar áudio. Tenta o Chrome ou o Safari mais recentes — o teleprompter funciona mesmo assim.', true);
     return false;
   }
-  if (ST.stream && ST.stream.active) return true;
-  try {
-    ST.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
-  } catch (e) {
-    setStudioMsg('Não consegui acessar o microfone — verifica a permissão do navegador. 🎤', true);
+  while (gumFlight) await gumFlight.catch(() => {});
+  const precisaMic = !(ST.stream && ST.stream.active);
+  const precisaCam = ST.video && !camOn();
+  if (!precisaMic && !precisaCam) return true;
+  const MIC = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+  let s = null, erro = null, micOk = false;
+  // um pedido por vez (senão sobra um microfone ligado sem dono)
+  gumFlight = (async () => {
+    try {
+      // microfone e câmera num pedido só: o navegador pergunta uma vez
+      s = await navigator.mediaDevices.getUserMedia({
+        audio: precisaMic ? MIC : false,
+        video: precisaCam ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false,
+      });
+    } catch (e) { erro = e; }
+    // a câmera falhou no pedido junto? tenta só o microfone, pra saber quem
+    // falhou (e já deixar a voz pronta pra gravar)
+    if (!s && precisaCam && precisaMic) {
+      try { s = await navigator.mediaDevices.getUserMedia({ audio: MIC }); micOk = true; } catch (e) {}
+    }
+  })();
+  await gumFlight;
+  gumFlight = null;
+  if (s && !ST.open) { s.getTracks().forEach(t => t.stop()); return false; }  // fechou o estúdio no meio
+  if (!s || micOk) {
+    if (micOk) attachMic(s);
+    if (precisaCam) camFailed(erro, precisaMic && !micOk);
+    else setStudioMsg('Não consegui acessar o microfone — verifica a permissão do navegador. 🎤', true);
+    renderStudio();
     return false;
   }
+  if (precisaMic) attachMic(s);
+  if (precisaCam) {
+    const vt = s.getVideoTracks();
+    if (!ST.video) vt.forEach(t => t.stop());   // trocou pra "só voz" enquanto esperava
+    else {
+      ST.cam = new MediaStream(vt);
+      vt.forEach(t => { t.onended = () => { if (ST.open && ST.video) { setStudioMsg('A câmera desligou (outro programa pegou ela, ou a tampa fechou?). Aperta 🎥 de novo pra religar.', true); renderStudio(); } }; });
+      const v = el('camLive');
+      v.srcObject = ST.cam;
+      await Promise.race([v.play().catch(() => {}), new Promise(r => setTimeout(r, 1500))]);
+    }
+  }
+  renderStudio();
+  return true;
+}
+function attachMic(s) {
+  if (ST.meterRaf) cancelAnimationFrame(ST.meterRaf);
+  try { if (ST.srcNode) ST.srcNode.disconnect(); } catch (e) {}
+  if (ST.stream) ST.stream.getTracks().forEach(t => t.stop());
+  ST.stream = new MediaStream(s.getAudioTracks());
   // medidor de volume (só pra você ver que o microfone está pegando)
   try {
     const a = getAudioCtx();
@@ -1332,7 +1641,22 @@ async function ensureMic() {
     ST.srcNode.connect(ST.analyser);   // não liga na saída: evita microfonia
     meterLoop();
   } catch (e) {}
-  return true;
+}
+function camFailed(e, comMic) {
+  const n = e && e.name;
+  const msg = (n === 'NotFoundError' || n === 'OverconstrainedError') ? 'Não achei nenhuma câmera neste aparelho.'
+    : n === 'NotReadableError' ? 'A câmera parece estar em uso por outro programa (Zoom, FaceTime…) — fecha ele e tenta de novo.'
+    : 'Não consegui ligar a câmera' + (comMic ? ' e o microfone' : '') + ' — verifica a permissão do navegador (o ícone de câmera na barra de endereço).';
+  // sem nada gravado, volta pro "só voz" pra não travar; com vídeo gravado, não mexe em nada
+  if (!ST.take) { ST.video = false; setStudioMsg(msg + ' Por enquanto deixei no modo só voz — dá pra gravar normalmente. 🎤', true); }
+  else setStudioMsg(msg + ' O que já está gravado continua salvo.', true);
+}
+function camOff() {
+  stopCapture();
+  if (ST.cam) ST.cam.getTracks().forEach(t => t.stop());
+  ST.cam = null;
+  const v = el('camLive');
+  if (v) v.srcObject = null;
 }
 function releaseMic() {
   if (ST.meterRaf) cancelAnimationFrame(ST.meterRaf);
@@ -1342,6 +1666,96 @@ function releaseMic() {
   if (ST.stream) ST.stream.getTracks().forEach(t => t.stop());
   ST.stream = null;
   el('recMeter').firstElementChild.style.width = '0%';
+  camOff();
+}
+
+// ---- quadros da câmera durante a gravação ----
+// cada quadro novo da câmera vira um JPEG quadrado (o miolo da imagem), com o
+// segundo em que foi capturado — contado do começo do trecho, igual ao áudio
+const capCanvas = document.createElement('canvas');
+capCanvas.width = capCanvas.height = CAM_PX;
+function startCapture() {
+  const v = el('camLive');
+  const g = capCanvas.getContext('2d');
+  const seg = { frames: [], pending: 0, last: -1e9 };   // os quadros deste trecho
+  ST.segFrames = seg; ST.capturing = true;
+  const grab = when => {
+    if (!ST.capturing || ST.segFrames !== seg || !v.videoWidth) return;
+    if (when - seg.last < 24) return;       // câmera de 60 quadros/s: guarda um sim, um não
+    seg.last = when;
+    const vw = v.videoWidth, vh = v.videoHeight, s = Math.min(vw, vh);
+    // sem espelhar: no vídeo você aparece como os outros te veem
+    g.drawImage(v, (vw - s) / 2, (vh - s) / 2, s, s, 0, 0, CAM_PX, CAM_PX);
+    const slot = { t: (when - ST.segStart) / 1000, b: null };
+    seg.frames.push(slot);
+    seg.pending++;
+    capCanvas.toBlob(b => { slot.b = b; seg.pending--; }, 'image/jpeg', 0.82);
+  };
+  grab(ST.segStart);   // a imagem que está na tela agora: o trecho nunca começa sem quadro
+  if (v.requestVideoFrameCallback) {
+    // um aviso por quadro que a câmera entrega (com a hora em que ele foi capturado)
+    const cb = (now, meta) => {
+      if (!ST.capturing) return;
+      const ct = meta && meta.captureTime;
+      grab(ct && ct <= now && now - ct < 400 ? ct : now - 30);
+      ST.capCb = v.requestVideoFrameCallback(cb);
+    };
+    ST.capCb = v.requestVideoFrameCallback(cb);
+  } else {
+    ST.capTimer = setInterval(() => grab(performance.now() - 30), 1000 / 30);
+  }
+}
+function stopCapture() {
+  ST.capturing = false;
+  const v = el('camLive');
+  if (ST.capCb != null && v && v.cancelVideoFrameCallback) { try { v.cancelVideoFrameCallback(ST.capCb); } catch (e) {} }
+  ST.capCb = null;
+  if (ST.capTimer) clearInterval(ST.capTimer);
+  ST.capTimer = null;
+}
+// espera os últimos JPEGs ficarem prontos e entrega os quadros do trecho
+async function segmentFrames() {
+  const seg = ST.segFrames;
+  ST.segFrames = null;
+  if (!seg) return [];
+  const t0 = performance.now();
+  while (seg.pending > 0 && performance.now() - t0 < 3000) await new Promise(r => setTimeout(r, 15));
+  return seg.frames.filter(f => f.b);
+}
+
+// ---- a bolinha do estúdio mostrando o que já foi gravado ----
+function takePlayer() {
+  if (!ST.vplayer || ST.vplayer.frames !== ST.vframes) {
+    dropTakePlayer();
+    ST.vplayer = framePlayer(ST.vframes, () => {
+      // um quadro acabou de ficar pronto: redesenha se ele é o que está sendo pedido
+      if (ST.vview === 'take' && !ST.player) requestAnimationFrame(() => drawTakeFrame());
+    });
+  }
+  return ST.vplayer;
+}
+function dropTakePlayer() {
+  if (ST.vplayer) ST.vplayer.close();
+  ST.vplayer = null;
+}
+function drawTakeFrame(t) {
+  if (!ST.video || !ST.vframes.length || ST.vview !== 'take') return;
+  if (t == null) {
+    const ph = playheadTime();
+    t = ph !== null ? ph - outLatency() : ST.cutAt;
+  }
+  t = Math.max(0, Math.min(takeDur(), t));
+  const bmp = takePlayer().at(t);
+  const c = el('camTake'), g = c.getContext('2d');
+  if (bmp) g.drawImage(bmp, 0, 0, c.width, c.height);
+  el('camTag').textContent = 'gravado · ' + fmtClock(t);
+}
+// mostra o gravado na bolinha (ao arrastar o marcador ou ouvir o take)
+function showTakeView() {
+  if (!ST.video || !ST.vframes.length) return;
+  ST.vview = 'take';
+  el('camDock').classList.add('take');
+  drawTakeFrame();
 }
 function meterLoop() {
   if (!ST.analyser) return;
@@ -1378,6 +1792,7 @@ function startSegment() {
   ST.segStart = performance.now();
   ST.segScroll = el('promptBox').scrollTop;
   ST.segStarts.push(takeDur());
+  if (ST.video) startCapture();   // o vídeo começa no mesmo instante que o áudio
   return true;
 }
 function stopSegment() {
@@ -1389,11 +1804,20 @@ function stopSegment() {
   });
 }
 async function closeSegment() {
+  const comVideo = !!ST.segFrames;
+  stopCapture();                       // o vídeo para junto com o áudio
   const blob = await stopSegment();
+  const frames = comVideo ? await segmentFrames() : null;
   ST.rec = null;
   if (!blob || !blob.size) return;
   try {
-    appendTake(await getAudioCtx().decodeAudioData(await blob.arrayBuffer()));
+    const buf = await getAudioCtx().decodeAudioData(await blob.arrayBuffer());
+    const base = takeDur();
+    appendTake(buf);
+    if (frames) {
+      appendFrames(frames, base, buf.duration);
+      if (!frames.length) setStudioMsg('A câmera não mandou imagem nesse trecho — a voz foi gravada, mas o rosto ficou parado. Confere se a câmera está ligada e regrava esse pedaço.', true);
+    }
   } catch (e) {
     setStudioMsg('Um trecho não pôde ser processado — grava esse pedaço de novo.', true);
   }
@@ -1407,17 +1831,24 @@ async function toggleRec() {
     stopScroll();
     await closeSegment();
     ST.mode = 'paused';
-    setStudioMsg('Pausado em ' + fmtClock(takeDur()) + '. Retomar continua daqui; se errou alguma coisa, corta na onda aí embaixo e regrava do ponto certo.');
+    if (el('studioMsg').className !== 'err') {
+      setStudioMsg('Pausado em ' + fmtClock(takeDur()) + '. Retomar continua daqui; se errou alguma coisa, corta na onda aí embaixo e regrava do ponto certo.'
+        + (ST.video ? ' Ao arrastar o marcador, a bolinha mostra a sua imagem naquele segundo.' : ''));
+    }
     renderStudio();
     return;
   }
   // gravar / retomar
   if (!(await ensureMic())) return;
+  if (ST.video && !camOn()) return;   // câmera não ligou (o aviso já está na tela)
   commitScript();
   if (!el('promptBox').value.trim()) setStudioMsg('Sem texto escrito o teleprompter fica parado — mas a gravação funciona igual. 🎙');
+  else if (ST.video) setStudioMsg(ST.take ? 'Gravando voz e vídeo — continuando de onde parou.' : 'Gravando voz e vídeo… olha pra câmera e lê no seu ritmo; dá pra pausar a hora que quiser.');
   else setStudioMsg(ST.take ? 'Gravando — continuando de onde parou.' : 'Gravando… lê no seu ritmo; dá pra pausar a hora que quiser.');
   el('promptBox').readOnly = true;
   el('promptBox').blur();
+  stopTake();
+  ST.vview = 'live';
   if (!startSegment()) { el('promptBox').readOnly = false; renderStudio(); return; }
   ST.mode = 'rec';
   startScroll();
@@ -1430,8 +1861,13 @@ function commitTake(silencioso) {
   if (!entry) return;
   const antes = entry.audio ? entry.audio.duration : -1;
   entry.audio = ST.take ? { buffer: ST.take, duration: ST.take.duration } : null;
+  // o vídeo só vale junto com a voz (é ela que marca o tempo)
+  entry.video = (ST.take && ST.video && ST.vframes.length) ? { frames: ST.vframes.slice() } : null;
   if (silencioso) return;
-  if (ST.take) {
+  if (ST.take && entry.video) {
+    setStudioMsg('Narração com vídeo salva: ' + fmtDur(ST.take.duration) + '. A cena vai durar exatamente esse tempo, com o seu rosto no canto. ✅');
+    setStatus('Narração com vídeo da cena ' + (ST.scene + 1) + ' gravada (' + fmtDur(ST.take.duration) + '). A cena vai durar o tempo da fala, e o seu rosto aparece numa bolinha no canto — dá pra trocar o canto e o tamanho no passo 2. 🎥');
+  } else if (ST.take) {
     setStudioMsg('Narração salva: ' + fmtDur(ST.take.duration) + '. A cena vai durar exatamente esse tempo. ✅');
     setStatus('Narração da cena ' + (ST.scene + 1) + ' gravada (' + fmtDur(ST.take.duration) + '). A cena vai durar o tempo da fala, e a voz sai no vídeo final. 🎙');
   } else if (antes >= 0) {
@@ -1590,7 +2026,8 @@ function playTake() {
   src.start(0, from);
   ST.player = { src, t0: a.currentTime, from };
   src.onended = () => { if (ST.player && ST.player.src === src) stopTake(); };
-  ST.playTimer = setInterval(drawWave, 60);
+  showTakeView();   // com vídeo, a bolinha toca a sua imagem junto com a voz
+  ST.playTimer = setInterval(() => { drawWave(); drawTakeFrame(); }, ST.video ? 33 : 60);
   el('takePlay').querySelector('use').setAttribute('href', '#i-stop');
 }
 function stopTake() {
@@ -1599,6 +2036,7 @@ function stopTake() {
   const b = el('takePlay');
   if (b) b.querySelector('use').setAttribute('href', '#i-play');
   drawWave();
+  drawTakeFrame();   // a bolinha volta pro quadro do marcador
 }
 // corta de verdade e leva o teleprompter de volta junto
 function applyCut(t, modo) {
@@ -1640,6 +2078,7 @@ function cutTake() {
     const r = c.getBoundingClientRect();
     ST.cutAt = Math.max(0, Math.min(takeDur(), ((e.clientX - r.left) / r.width) * takeDur()));
     renderTakeBar();
+    showTakeView();   // com vídeo, a bolinha mostra a sua imagem naquele segundo
   };
   c.addEventListener('pointerdown', e => {
     e.preventDefault(); arrastando = true; stopTake();
@@ -1659,12 +2098,23 @@ function renderStudio() {
   const entry = sceneImages[ST.scene] || {};
   const rec = ST.mode === 'rec', paused = ST.mode === 'paused', busy = ST.mode === 'busy';
   el('studioTitle').textContent = 'Narração da cena ' + (ST.scene + 1) + (sceneImages.length > 1 ? ' de ' + sceneImages.length : '');
-  el('studioSub').textContent = rec ? 'gravando — lê no seu ritmo'
-    : (paused ? 'pausado — dá pra corrigir o texto e retomar daqui' : 'escreva o texto e leia enquanto grava');
+  el('studioSub').textContent = rec ? (ST.video ? 'gravando voz e vídeo — olha pra câmera' : 'gravando — lê no seu ritmo')
+    : (paused ? 'pausado — dá pra corrigir o texto e retomar daqui'
+      : (ST.video ? 'escreva o texto e leia olhando pra câmera' : 'escreva o texto e leia enquanto grava'));
   // o texto só fica travado enquanto o microfone está ligado; pausado dá pra editar
   el('promptBox').readOnly = rec || busy;
   el('editTextBtn').style.display = (rec || busy) ? 'none' : 'inline';
-  el('narrStudio').className = 'studio' + (rec ? ' rec' : '') + ((rec || paused) ? ' reading' : '');
+  el('narrStudio').className = 'studio' + (rec ? ' rec' : '') + ((rec || paused) ? ' reading' : '') + (ST.video ? ' video' : '');
+  // só voz / voz + vídeo (não dá pra trocar no meio de um trecho)
+  el('modeVoice').setAttribute('aria-pressed', String(!ST.video));
+  el('modeVideo').setAttribute('aria-pressed', String(ST.video));
+  el('modeVoice').disabled = el('modeVideo').disabled = rec || busy;
+  // a bolinha: câmera ao vivo, ou o gravado quando você está revisando
+  const dock = el('camDock');
+  dock.hidden = !ST.video;
+  if (rec || !ST.vframes.length) ST.vview = 'live';
+  dock.classList.toggle('take', ST.vview === 'take');
+  if (ST.vview !== 'take') el('camTag').textContent = rec ? '● gravando' : (camOn() ? 'ao vivo' : 'câmera desligada');
   el('recBtn').className = 'recbtn' + (rec ? ' pausing' : '');
   el('recBtn').disabled = busy;
   el('recLabel').textContent = rec ? 'Pausar' : (paused ? 'Retomar' : (ST.take ? 'Continuar gravando' : 'Gravar'));
@@ -1711,14 +2161,45 @@ el('promptBigger').addEventListener('click', () => setFontSize(ST.fsize + 3));
 el('promptBox').addEventListener('input', () => { commitScript(); syncRestoreBtn(); });
 el('takePlay').addEventListener('click', playTake);
 el('takeCut').addEventListener('click', cutTake);
-el('clearSavedBtn').addEventListener('click', () => {
-  if (!sceneImages[ST.scene]) return;
+function clearTake() {
   stopTake();
   ST.take = null; ST.peaks = null; ST.cutAt = 0; ST.marks = []; ST.segStarts = [];
-  sceneImages[ST.scene].audio = null;
+  ST.vframes = []; ST.vview = 'live';
+  if (sceneImages[ST.scene]) { sceneImages[ST.scene].audio = null; sceneImages[ST.scene].video = null; }
+  if (ST.mode === 'paused') { ST.mode = 'idle'; el('promptBox').readOnly = false; }
+}
+el('clearSavedBtn').addEventListener('click', () => {
+  if (!sceneImages[ST.scene]) return;
+  clearTake();
   setStudioMsg('Narração apagada. A cena volta a durar os segundos definidos na lista.');
   renderStudio(); renderSceneList();
 });
+
+// só voz / voz + vídeo
+async function setNarrMode(video) {
+  if (ST.mode === 'rec' || ST.mode === 'busy' || video === ST.video) return;
+  if (ST.take) {
+    const ok = video
+      ? confirm('Esta cena já tem ' + fmtDur(takeDur()) + ' de narração só com a voz.\n\nPra gravar com vídeo, a narração começa do zero. Apagar a voz gravada e começar com vídeo?')
+      : confirm('Tirar o vídeo desta cena e ficar só com a voz?\n\nA voz gravada continua; só o seu rosto sai.');
+    if (!ok) return;
+    if (video) clearTake();
+    else { stopTake(); ST.vframes = []; ST.vview = 'live'; }
+  }
+  ST.video = video;
+  try { localStorage.setItem(MODE_KEY, video ? 'video' : 'voz'); } catch (e) {}
+  if (video) {
+    setStudioMsg('Voz + vídeo: o seu rosto vai aparecer numa bolinha no canto do vídeo, só nas cenas gravadas assim. Olha pra câmera enquanto lê — a faixa de leitura fica perto do topo da tela justamente pra isso. 🎥');
+    renderStudio();
+    await ensureMic();    // liga a câmera pra você se ver e se ajeitar
+  } else {
+    camOff();
+    setStudioMsg(ST.take ? 'Pronto: a cena ficou só com a voz. Pode continuar gravando, cortar ou concluir.' : 'Só voz: grava a narração sem câmera. 🎙');
+  }
+  renderStudio(); renderSceneList();
+}
+el('modeVoice').addEventListener('click', e => { e.currentTarget.blur(); setNarrMode(false); });
+el('modeVideo').addEventListener('click', e => { e.currentTarget.blur(); setNarrMode(true); });
 el('narrStudio').addEventListener('click', e => { if (e.target.id === 'narrStudio') closeStudio(); });
 
 // atalhos de teclado (só valem quando você não está digitando o texto)
@@ -1881,7 +2362,75 @@ function computeLayout() {
   });
 }
 
+// câmera de cada cena. Nas cenas narradas com vídeo, se o desenho for ficar
+// embaixo da bolinha do rosto, a câmera reenquadra (guardado, pra não recalcular)
 function cameraOf(i) {
+  const W = canvas.width, H = canvas.height;
+  const sc = scenes[i];
+  const face = sceneHasFace(i);
+  const key = [W, H, scenes.length, sc.rect.x, sc.rect.y, sc.rect.w, sc.rect.h, face ? camStyle.corner + camStyle.size : '-'].join();
+  if (sc.camMemo && sc.camMemo.key === key) return sc.camMemo.cam;
+  let cam = baseCameraOf(i);
+  if (face) cam = dodgeBubble(sc, cam);
+  sc.camMemo = { key, cam };
+  return cam;
+}
+
+// o desenho encosta na bolinha? (testa os próprios traços, não só a caixa)
+function inkHitsBubble(sc, cam) {
+  const W = canvas.width, H = canvas.height;
+  const b = bubbleGeom(W, H);
+  const r = b.d / 2 + Math.min(W, H) * 0.015, bx = b.x + b.d / 2, by = b.y + b.d / 2;
+  const ord = sc.revealOrder, SW = sc.srcData.width;
+  const kx = sc.rect.w / sc.src.bw, ky = sc.rect.h / sc.src.bh;
+  const step = Math.max(1, Math.ceil(ord.length / 30000));
+  for (let k = 0; k < ord.length; k += step) {
+    const p = ord[k], px = p % SW, py = (p / SW) | 0;
+    const sx = (sc.rect.x + (px - sc.src.bx) * kx - cam.cx) * cam.z + W / 2;
+    const sy = (sc.rect.y + (py - sc.src.by) * ky - cam.cy) * cam.z + H / 2;
+    if ((sx - bx) * (sx - bx) + (sy - by) * (sy - by) < r * r) return true;
+  }
+  return false;
+}
+
+// reenquadra a cena na área livre: acima/abaixo da bolinha, ou ao lado dela —
+// o que deixar o desenho maior
+function dodgeBubble(sc, cam) {
+  if (!sc.revealOrder.length || !inkHitsBubble(sc, cam)) return cam;
+  const W = canvas.width, H = canvas.height;
+  const sa = safeArea(W, H), b = bubbleGeom(W, H);
+  const gap = Math.round(Math.min(W, H) * 0.025);
+  const top = b.y < H / 2, left = b.x < W / 2;
+  const areas = [
+    top ? { x: sa.x, y: b.y + b.d + gap, w: sa.w, h: sa.y + sa.h - (b.y + b.d + gap) }
+        : { x: sa.x, y: sa.y, w: sa.w, h: b.y - gap - sa.y },
+    left ? { x: b.x + b.d + gap, y: sa.y, w: sa.x + sa.w - (b.x + b.d + gap), h: sa.h }
+         : { x: sa.x, y: sa.y, w: b.x - gap - sa.x, h: sa.h },
+  ];
+  // o que precisa caber: numa cena só, os traços (a imagem ocupa a tela toda);
+  // na cartolina, a cena inteira
+  const one = scenes.length === 1;
+  const box = one
+    ? { x: sc.ink.bx, y: sc.ink.by, w: sc.ink.bw, h: sc.ink.bh }
+    : { x: sc.rect.x, y: sc.rect.y, w: sc.rect.w, h: sc.rect.h };
+  const m = Math.round(Math.min(sa.w, sa.h) * 0.04);
+  let best = null;
+  for (const A of areas) {
+    if (A.w < 40 || A.h < 40) continue;
+    const z = Math.min(cam.z, (A.w - m) / box.w, (A.h - m) / box.h);
+    if (z > 0 && (!best || z > best.z)) best = { z, A };
+  }
+  // espremer demais estraga o desenho: aí é melhor a bolinha encostar um pouco
+  if (!best || best.z < cam.z * 0.5) return cam;
+  const { z, A } = best;
+  return {
+    cx: box.x + box.w / 2 - (A.x + A.w / 2 - W / 2) / z,
+    cy: box.y + box.h / 2 - (A.y + A.h / 2 - H / 2) / z,
+    z,
+  };
+}
+
+function baseCameraOf(i) {
   const W = canvas.width, H = canvas.height;
   const sc = scenes[i];
   if (scenes.length === 1) return { cx: W / 2, cy: H / 2, z: 1 };
@@ -2198,6 +2747,8 @@ function stopAnimation() {
   if (animHandle) { cancelAnimationFrame(animHandle); animHandle = null; }
   activeAudioSources.forEach(src => { try { src.stop(); } catch (e) {} });
   activeAudioSources = [];
+  activeFacePlayers.forEach(p => p.close());
+  activeFacePlayers = [];
   if (recorder && recorder.state !== 'inactive') { try { recorder.stop(); } catch (e) {} }
   recorder = null;
   setButtons(true);
@@ -2923,7 +3474,7 @@ el('handReset').addEventListener('click', () => {
   el('handTipStatus').textContent = 'Voltei pra mão ilustrada padrão.';
 });
 
-function runAnimation(onDone, audioDest) {
+function runAnimation(onDone, audioDest, faceDelay) {
   const W = canvas.width, H = canvas.height;
   const n = scenes.length;
   scenes.forEach(resetScene);
@@ -2948,7 +3499,7 @@ function runAnimation(onDone, audioDest) {
       durMs = (entry.dur || +el('duration').value) * 1000;
     }
     phases.push({ type: 'draw', i, ms: Math.max(300, durMs), audio: entry.audio || null, audioStarted: false });
-    if (n > 1 && pauseMs > 0) phases.push({ type: 'pause', i, ms: pauseMs });
+    if (n > 1 && pauseMs > 0) phases.push({ type: 'pause', i, ms: pauseMs, drawMs: Math.max(300, durMs) });
     if (i < n - 1) phases.push({ type: 'move', i, ms: moveMs });
   });
   if (n > 1) phases.push({ type: 'zoom', ms: zoomMs });
@@ -2958,6 +3509,17 @@ function runAnimation(onDone, audioDest) {
   const fitCam = cameraFinal();
   const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   const useHand = el('showHand').checked;
+
+  // o seu rosto: um tocador de quadros por cena narrada com vídeo. O vídeo
+  // acompanha a fala: começa com o desenho e segue pela pausa (como o áudio)
+  activeFacePlayers.forEach(p => p.close());
+  const faces = scenes.map((_, i) => sceneHasFace(i) ? framePlayer(sceneImages[i].video.frames) : null);
+  activeFacePlayers = faces.filter(Boolean);
+  if (faces[0]) faces[0].at(0);   // já decodifica o comecinho
+  // na prévia o som chega atrasado no fone/caixa: a imagem espera por ele.
+  // Gravando o arquivo, só o atraso que o próprio arquivo cria (faceDelay)
+  const lag = () => (audioDest ? (faceDelay || 0) : outLatency());
+  const END = 1e9;                // "último quadro"
 
   let handX = W + 300, handY = H + 300; // a mão entra vindo de fora da tela
   let tilt = 0, lift = 1, dirX = 0, prevTx = 0;
@@ -2970,6 +3532,7 @@ function runAnimation(onDone, audioDest) {
 
     let cam = cameraOf(0), handTarget = null, drawing = false;
     let phaseText = '';
+    let face = null;   // o que a bolinha mostra neste quadro (e o quanto aparece)
     let acc = 0;
     for (const ph of phases) {
       if (t > acc + ph.ms) {
@@ -2989,6 +3552,12 @@ function runAnimation(onDone, audioDest) {
         }
         revealPixels(sc, Math.min(sc.revealOrder.length, Math.floor(sc.revealOrder.length * pr)));
         cam = cameraOf(ph.i);
+        if (faces[ph.i]) {
+          // a primeira cena entra com a bolinha crescendo; as outras já chegam prontas
+          face = { a: faces[ph.i].at((t - acc) / 1000 - lag()), vis: ph.i === 0 ? Math.min(1, (t - acc) / 350) : 1 };
+        }
+        const prox = faces[ph.i + 1];
+        if (prox && !prox.primed) { prox.primed = true; prox.at(0); }
         if (sc.revealed > 0) {
           const last = sc.revealOrder[sc.revealed - 1];
           const px = last % W, py = (last / W) | 0;
@@ -3002,6 +3571,7 @@ function runAnimation(onDone, audioDest) {
         // cena pronta descansando na tela: câmera parada, mão levantada
         phaseText = 'cena ' + (ph.i + 1) + ' pronta \u2014 pausinha\u2026';
         cam = cameraOf(ph.i);
+        if (faces[ph.i]) face = { a: faces[ph.i].at((ph.drawMs + t - acc) / 1000 - lag()), vis: 1 };
         const sc = scenes[ph.i];
         if (sc.revealOrder.length) {
           const last = sc.revealOrder[sc.revealOrder.length - 1];
@@ -3020,6 +3590,12 @@ function runAnimation(onDone, audioDest) {
           cy: a2.cy + (b2.cy - a2.cy) * e2,
           z: a2.z + (b2.z - a2.z) * e2,
         };
+        // entre duas cenas com vídeo, um quadro se dissolve no outro; senão a
+        // bolinha sai (ou entra) durante o passeio da câmera
+        const A = faces[ph.i], B = faces[ph.i + 1];
+        if (A && B) face = { a: A.at(END), b: B.at(0), mix: e2, vis: 1 };
+        else if (A) face = { a: A.at(END), vis: 1 - ease(Math.min(1, pr / 0.5)) };
+        else if (B) face = { a: B.at(0), vis: ease(Math.max(0, (pr - 0.4) / 0.6)) };
         const nx = scenes[ph.i + 1];
         if (nx.revealOrder.length) {
           const first = nx.revealOrder[0];
@@ -3038,9 +3614,12 @@ function runAnimation(onDone, audioDest) {
           cy: a2.cy + (fitCam.cy - a2.cy) * e2,
           z: a2.z + (fitCam.z - a2.z) * e2,
         };
+        // o rosto sai de cena pra revelar a cartolina inteira
+        if (faces[n - 1]) face = { a: faces[n - 1].at(END), vis: 1 - ease(Math.min(1, pr / 0.3)) };
       } else { // hold
         phaseText = 'último olhar\u2026';
         cam = fitCam;
+        if (n === 1 && faces[0]) face = { a: faces[0].at(END), vis: 1 - ease(Math.min(1, (t - acc) / 450)) };
       }
       break;
     }
@@ -3073,12 +3652,16 @@ function runAnimation(onDone, audioDest) {
       const jy = 1.4 * Math.cos(t * 0.027);
       drawHand(handX + jx, handY + jy, tilt + wobble, lift);
     }
+    // a bolinha com o seu rosto vai por cima de tudo (a mão passa por baixo)
+    if (!done) drawBubble(ctx, W, H, face);
 
     el('progressfill').style.width = Math.min(100, 100 * t / totalMs) + '%';
     if (!done) {
       animHandle = requestAnimationFrame(tick);
     } else {
       animHandle = null;
+      activeFacePlayers.forEach(p => p.close());
+      activeFacePlayers = [];
       onDone && onDone();
     }
   }
@@ -3178,7 +3761,12 @@ function recordWith(candidates, idx) {
   };
   recorder.start(250);
 
-  runAnimation(() => { if (recorder && recorder.state !== 'inactive') recorder.stop(); }, audioDest);
+  // o MP4 que o Chrome grava começa o som ~44 ms atrasado (o "respiro" do
+  // compressor AAC, que o arquivo não manda pular): o rosto espera o mesmo
+  // tanto, pra boca e voz baterem. WebM e Safari não têm esse atraso.
+  const chromium = /Chrome\/\d/.test(navigator.userAgent);   // Chrome, Edge… (no iPhone o Chrome é Safari por dentro)
+  const faceDelay = (audioDest && chosen.ext === 'mp4' && chromium) ? 0.04 : 0;
+  runAnimation(() => { if (recorder && recorder.state !== 'inactive') recorder.stop(); }, audioDest, faceDelay);
 }
 
 function setStatus(msg, isError) {
@@ -3199,6 +3787,46 @@ document.querySelectorAll('.chip[data-format]').forEach(ch => ch.addEventListene
   el('format').dispatchEvent(new Event('change'));
 }));
 
+// canto e tamanho da bolinha com o seu rosto
+function syncCamChips() {
+  document.querySelectorAll('.chip[data-cam-corner]').forEach(ch =>
+    ch.setAttribute('aria-pressed', String(ch.dataset.camCorner === camStyle.corner)));
+  document.querySelectorAll('.chip[data-cam-size]').forEach(ch =>
+    ch.setAttribute('aria-pressed', String(ch.dataset.camSize === camStyle.size)));
+}
+function camStyleChanged() {
+  try { localStorage.setItem(CAM_KEY, JSON.stringify(camStyle)); } catch (e) {}
+  syncCamChips();
+  updateStyleSummary();
+  renderSceneList();   // as miniaturas mostram o rosto no canto novo
+  const i = sceneImages.findIndex((en, k) => sceneHasFace(k));
+  if (i >= 0 && showFacePoster(i)) {
+    setStatus('Assim fica o seu rosto no vídeo (cena ' + (i + 1) + '). Se o desenho for bater na bolinha, a câmera ajeita ele pro lado. 🎥');
+  } else if (i < 0) {
+    setStatus('Anotado! O seu rosto aparece nesse canto nas cenas narradas com vídeo — é só escolher "voz + vídeo" no estúdio (o microfone de cada cena).');
+  }
+}
+document.querySelectorAll('.chip[data-cam-corner]').forEach(ch => ch.addEventListener('click', () => {
+  camStyle.corner = ch.dataset.camCorner; camStyleChanged();
+}));
+document.querySelectorAll('.chip[data-cam-size]').forEach(ch => ch.addEventListener('click', () => {
+  camStyle.size = ch.dataset.camSize; camStyleChanged();
+}));
+
+// palco: mostra a cena i pronta com o seu rosto no canto (pra ver onde fica)
+function showFacePoster(i) {
+  if (!scenes || !scenes[i] || animHandle || recorder || !sceneHasFace(i)) return false;
+  const fr = sceneImages[i].video.frames;
+  createImageBitmap(fr[Math.min(fr.length - 1, Math.floor(fr.length * 0.3))].b).then(bmp => {
+    if (animHandle || recorder || !scenes || !scenes[i]) { bmp.close(); return; }
+    scenes.forEach(sc => revealPixels(sc, sc.revealOrder.length));
+    drawWorld(cameraOf(i));
+    drawBubble(ctx, canvas.width, canvas.height, { a: bmp, vis: 1 });
+    bmp.close();
+  }, () => {});
+  return true;
+}
+
 document.querySelectorAll('#handToolBtns button').forEach(b => b.addEventListener('click', () => {
   el('handTool').value = b.dataset.tool;
   el('handTool').dispatchEvent(new Event('change'));
@@ -3211,7 +3839,12 @@ function updateStyleSummary() {
   const pausa = 'pausa ' + (+el('scenePause').value || 0) + 's';
   const temMao = !!(customHand && customHand.tipX !== null && customHand.tipX !== undefined);
   const mao = el('showHand').checked ? ('mão: ' + (temMao ? 'sua foto ✓' : 'ilustrada')) : 'sem mão';
-  el('styleSummary').textContent = [fmt, ordMap[el('order').value] || '', pausa, mao].join('  ·  ');
+  const partes = [fmt, ordMap[el('order').value] || '', pausa, mao];
+  // o rosto só entra no resumo quando alguma cena foi narrada com vídeo
+  if (sceneImages.some((en, k) => sceneHasFace(k))) {
+    partes.push('rosto ' + { bl: '↙', br: '↘', tl: '↖', tr: '↗' }[camStyle.corner]);
+  }
+  el('styleSummary').textContent = partes.join('  ·  ');
 }
 
 // miniatura da mão atual (na barra de resumo e no campo do estilo)
@@ -3252,6 +3885,7 @@ el('backBtn').addEventListener('click', () => {
 });
 
 syncFormatChips();
+syncCamChips();
 updateHandButtons();
 </script>
 </body>
