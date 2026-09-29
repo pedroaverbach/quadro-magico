@@ -745,10 +745,10 @@
         <div class="field">
           <span class="flabel" title="vale pras cenas narradas em &quot;voz + vídeo&quot;">Seu rosto no vídeo</span>
           <div class="chips" role="group" aria-label="Canto do vídeo onde o seu rosto aparece">
-            <button class="chip" data-cam-corner="bl" aria-pressed="true" title="embaixo, à esquerda"><svg class="ic" aria-hidden="true"><use href="#i-cbl"/></svg></button>
-            <button class="chip" data-cam-corner="br" aria-pressed="false" title="embaixo, à direita"><svg class="ic" aria-hidden="true"><use href="#i-cbr"/></svg></button>
             <button class="chip" data-cam-corner="tl" aria-pressed="false" title="em cima, à esquerda"><svg class="ic" aria-hidden="true"><use href="#i-ctl"/></svg></button>
-            <button class="chip" data-cam-corner="tr" aria-pressed="false" title="em cima, à direita"><svg class="ic" aria-hidden="true"><use href="#i-ctr"/></svg></button>
+            <button class="chip" data-cam-corner="tr" aria-pressed="true" title="em cima, à direita"><svg class="ic" aria-hidden="true"><use href="#i-ctr"/></svg></button>
+            <button class="chip" data-cam-corner="bl" aria-pressed="false" title="embaixo, à esquerda"><svg class="ic" aria-hidden="true"><use href="#i-cbl"/></svg></button>
+            <button class="chip" data-cam-corner="br" aria-pressed="false" title="embaixo, à direita"><svg class="ic" aria-hidden="true"><use href="#i-cbr"/></svg></button>
           </div>
           <div class="chips" role="group" aria-label="Tamanho da bolinha com o seu rosto">
             <button class="chip" data-cam-size="p" aria-pressed="false" title="bolinha pequena">P</button>
@@ -1034,12 +1034,16 @@ function outLatency() {
 // emendar e continuar funciona no vídeo exatamente como já funciona na voz.
 const CAM_PX = 360;                             // resolução de cada quadro
 const CAM_SIZES = { p: 0.2, m: 0.26, g: 0.34 }; // diâmetro, em fração do lado menor do vídeo
-const CAM_KEY = 'quadroMagicoRosto';
-const camStyle = { corner: 'bl', size: 'm' };
+const CAM_KEY = 'quadroMagicoRosto2';
+const camStyle = { corner: 'tr', size: 'm' };   // padrão: em cima, à direita
 try {
   const s = JSON.parse(localStorage.getItem(CAM_KEY));
   if (s && /^[bt][lr]$/.test(s.corner)) camStyle.corner = s.corner;
   if (s && CAM_SIZES[s.size]) camStyle.size = s.size;
+  // escolha salva na versão anterior (canto de baixo como padrão): o canto
+  // passa pro novo padrão, o tamanho escolhido continua
+  const velho = !s && JSON.parse(localStorage.getItem('quadroMagicoRosto'));
+  if (velho && CAM_SIZES[velho.size]) camStyle.size = velho.size;
 } catch (e) {}
 
 const sceneHasFace = i => {

@@ -32,7 +32,7 @@ No topo do estúdio, troque **só voz** por **voz + vídeo**:
 - todas as ferramentas da voz valem pro vídeo: teleprompter, pausar e retomar, cortar na onda, "apagar o último trecho", continuar depois de reabrir, e a cena durando o tempo exato da fala;
 - ao arrastar o marcador na onda, a bolinha mostra a sua imagem naquele segundo; o ▶ toca voz e imagem juntas;
 - no vídeo final o rosto aparece numa bolinha com aro branco: entra crescendo na primeira cena, se dissolve de uma cena pra outra quando as duas têm vídeo, sai nas cenas só com voz e sai de novo no zoom final, pra revelar a cartolina inteira;
-- no passo 2 (Estilo) você escolhe o **canto** e o **tamanho** (P, M, G) da bolinha; no 9:16 ela fica dentro da área que a interface do Reels não cobre;
+- a bolinha fica no canto de cima, à direita; no passo 2 (Estilo) dá pra trocar o **canto** e o **tamanho** (P, M, G); no 9:16 ela fica dentro da área que a interface do Reels não cobre;
 - se um desenho for ficar embaixo da bolinha, a câmera reenquadra a cena (pra cima, pra baixo ou pro lado, o que deixar o desenho maior);
 - dá pra misturar: cada cena escolhe se é só voz ou voz + vídeo.
 
